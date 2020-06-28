@@ -43,6 +43,8 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
 
     public int sendJobs(List<Job> schedule) throws org.apache.thrift.TException {
         int scheduleSize = 0;
+        List<List<Job>> localSchedules;
+        int localSchedulesSize;
         boolean areJobsLoaded = false;
         for (Job job : schedule) {
             scheduleSize += job.timeUnits;
@@ -51,23 +53,35 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
             schedulesSize += scheduleSize;
             schedules.add(schedule);
             areJobsLoaded = (schedules.size() == numClients);
+            if (!areJobsLoaded) {
+                return 0;
+            }
+            localSchedules = new ArrayList<>();
+            localSchedules.addAll(schedules);
+            localSchedulesSize = schedulesSize;
+            schedulesSize = 0;
+            schedules.clear();
         }
         if (areJobsLoaded) {
             try {
-                ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(schedulesSize);
+                ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localSchedulesSize);
+                ArrayList<List<List<Job>>> beNodeSchedules = new ArrayList<>();
+                for (int i = 0; i < clients.size(); i++) {
+                    beNodeSchedules.add(new ArrayList<>());
+                }
                 int clientsToCall = Math.min(numClients, clients.size()); //temp
 
                 //TODO: Add scheduling algorithm
-                int perClient = (int) Math.ceil((double) schedulesSize / clients.size());
+                int perClient = (int) Math.ceil((double) localSchedulesSize / clients.size());
                 log.info("Calling " + clients.size() + " backend node thread(s)");
 
-                for (int i = 0; i < clients.size() ; i++) {
+                for (int i = 0; i < clients.size(); i++) {
                     ClientContainer clientContainer = clients.get(i);
                     log.debug("Locked client " + clientContainer.id + " for processing");
                     //rearm the joining barrier
                     clientContainer.countDownLatch = new CountDownLatch(1);
                     if (!clientContainer.client.hasError()) {
-                        clientContainer.client.sendJobs(schedules.get(i % clientsToCall),//temp
+                        clientContainer.client.sendJobs(localSchedules.get(i % clientsToCall),
                                 new SendJobsCallback(clientContainer, backEnds));
                     } else {
                         clientContainer.countDownLatch.countDown();
@@ -78,10 +92,6 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
                     client.countDownLatch.await();
                     log.debug("Unlocked client " + client.id + " from processing");
                     client.lock.release();
-                }
-                synchronized (this) {
-                    schedulesSize = 0;
-                    schedules.clear();
                 }
                 return 0;
             } catch (Exception e) {

@@ -1,7 +1,8 @@
 struct Job {
-  1: i32 index,
-  2: i32 timeUnits,
-  3: i32 epsilon
+  1: i32 ingress,
+  2: string egress,
+  3: i32 timeUnits,
+  4: i32 epsilon
 }
 
 exception IllegalArgument {

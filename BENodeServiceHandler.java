@@ -10,7 +10,7 @@ public class BENodeServiceHandler implements SincroniaService.Iface {
 
     public int sendJobs(List<Job> schedule) {
 		for (Job job : schedule) {
-			log.info("Job " + job.index + " processed in " + job.timeUnits);
+			log.info("Job " + job.ingress + " processed in " + job.timeUnits);
 		}
 		return 0;
     }

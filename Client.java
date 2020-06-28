@@ -26,21 +26,34 @@ public class Client {
 			String firstLine[] = scheduleReader.nextLine().split(" ");
 			numClients = Integer.valueOf(firstLine[1]);
 			while (scheduleReader.hasNextLine()) {
-				String currentLine[] = scheduleReader.nextLine().split(" ");
+				String currentLine[] = scheduleReader.nextLine().split(";");
 				List<Job> schedule = new ArrayList<>();
-				for (int i = 0; i < currentLine.length; i+= 2) {
-					Integer job = Integer.valueOf(currentLine[i].split(":")[0]);
-					String timeSplit[] = currentLine[i+1].split("\\+");
-					Integer time = Integer.valueOf(timeSplit[0].split(",")[0]);
-					Integer epsilon = 0;
-					if (timeSplit.length > 1) {
-						if (timeSplit[1].charAt(0) == 'e') {
-							epsilon = 1;
-						} else {
-							epsilon = Integer.valueOf(timeSplit[1].split("e")[0]);
+				for (int i = 0; i < currentLine.length; i++) {
+					String jobSplit[] = currentLine[i].split(",");
+					int ingress = Integer.valueOf(jobSplit[0].substring(1));
+					jobSplit = jobSplit[1].split(":");
+					String egress = jobSplit[0].substring(1);
+					boolean isNegative = false;
+					int epsilon = 0;
+					int timeUnits = 0;
+					if (jobSplit[1].contains("e")) {
+						if (jobSplit[1].contains("-")) {
+							jobSplit = jobSplit[1].split("-");
+							isNegative = true;
+						} else if (jobSplit[1].contains("+")) {
+							jobSplit = jobSplit[1].split("\\+");
 						}
+						timeUnits = Integer.valueOf(jobSplit[0].substring(1));
+						if (jobSplit[1].charAt(0) == 'e') {
+							epsilon = (isNegative ? -1 : 1);
+						} else {
+							jobSplit = jobSplit[1].split("e");
+							epsilon = Integer.valueOf(jobSplit[0]) * (isNegative ? -1 : 1);
+						}
+					} else {
+						timeUnits = Integer.valueOf(jobSplit[1].substring(1));
 					}
-					schedule.add(new Job(job, time, epsilon));
+					schedule.add(new Job(ingress, egress, timeUnits, epsilon));
 				}
 				schedules.add(schedule);
 			}
