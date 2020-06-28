@@ -10,24 +10,11 @@ public class RoundRobinLoadBalancer {
         this.clients = clients;
     }
 
-    public synchronized ArrayList<ClientContainer> getBalancedLoad(int schedulesSize) throws InterruptedException {
-        //basically we just want to go through the list
+    public synchronized ArrayList<ClientContainer> getBalancedLoad(int egressesSize) throws InterruptedException {
         ArrayList<ClientContainer> ret = new ArrayList<>();
         if (clients.isEmpty()) return ret;
-        int scheduleCost = 0;
-        //divide the work into the number of clients and return
-        if (schedulesSize > clients.size()){
-            //we dont have enough threads to spread this across, also use fenode as a thread
-            int perClient = (int) Math.ceil((double) schedulesSize / (clients.size() + 1));
-            //in rare cases (e.g. n clients and n+1 tasks), rounding up the per client could assign useless clients
-            //so extra check in for loop is in place for this reason
-            for (int i = 0; i < clients.size() && (perClient * i) < schedulesSize; i++){
-                addClient(ret);
-            }
-        } else {
-            for (int i = 0; i < schedulesSize; i++) {
-                addClient(ret);
-            }
+        for (int i = 0; i < Math.min(egressesSize, clients.size()); i++) {
+            addClient(ret);
         }
         if(clients.size() == 0){
             ret.clear();

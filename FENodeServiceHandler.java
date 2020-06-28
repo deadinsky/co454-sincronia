@@ -17,7 +17,8 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
     private Timer timer = new Timer();
     private int numClients = 0;
     private List<List<Job>> schedules = new ArrayList<>();
-    private int schedulesSize = 0;
+    private LinkedHashSet<Integer> ids = new LinkedHashSet<Integer>();
+    private LinkedHashSet<String> egresses = new LinkedHashSet<String>();
 
     public FENodeServiceHandler(){
         TimerTask timerTask = new TimerTask() {
@@ -41,16 +42,32 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
     }
     static Logger log = Logger.getLogger(FENodeServiceHandler.class.getName());
 
+    public ArrayList<List<Job>> calculateSchedules(List<List<Job>> localSchedules, Integer[] localIds,
+                                                         String[] localEngresses) {
+        ArrayList<List<Job>> beNodeSchedules = new ArrayList<>();
+        for (int i = 0; i < localEngresses.length; i++) {
+            beNodeSchedules.add(new ArrayList<>());
+        }
+        int i = 0;
+        for (List<Job> schedule : localSchedules) {
+            for (Job job : schedule) {
+                beNodeSchedules.get(i).add(job);
+                i = (i + 1) % localEngresses.length;
+            }
+        }
+        return beNodeSchedules;
+    }
+
     public int sendJobs(List<Job> schedule) throws org.apache.thrift.TException {
-        int scheduleSize = 0;
         List<List<Job>> localSchedules;
-        int localSchedulesSize;
         boolean areJobsLoaded = false;
+        String localEgresses[];
+        Integer localIds[];
         for (Job job : schedule) {
-            scheduleSize += job.timeUnits;
+            ids.add(job.id);
+            egresses.add(job.egress);
         }
         synchronized (this) {
-            schedulesSize += scheduleSize;
             schedules.add(schedule);
             areJobsLoaded = (schedules.size() == numClients);
             if (!areJobsLoaded) {
@@ -58,22 +75,22 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
             }
             localSchedules = new ArrayList<>();
             localSchedules.addAll(schedules);
-            localSchedulesSize = schedulesSize;
-            schedulesSize = 0;
+            localIds = ids.toArray(new Integer[0]);
+            localEgresses = egresses.toArray(new String[0]);
             schedules.clear();
+            ids.clear();
+            egresses.clear();
         }
         if (areJobsLoaded) {
             try {
-                ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localSchedulesSize);
-                ArrayList<List<List<Job>>> beNodeSchedules = new ArrayList<>();
-                for (int i = 0; i < clients.size(); i++) {
-                    beNodeSchedules.add(new ArrayList<>());
-                }
-                int clientsToCall = Math.min(numClients, clients.size()); //temp
-
-                //TODO: Add scheduling algorithm
-                int perClient = (int) Math.ceil((double) localSchedulesSize / clients.size());
+                ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localEgresses.length);
                 log.info("Calling " + clients.size() + " backend node thread(s)");
+                if (localEgresses.length != clients.size()) {
+                    log.info("The number of BENodes expected is more than what's available.");
+                }
+
+                ArrayList<List<Job>> beNodeSchedules = calculateSchedules(localSchedules,
+                        localIds, localEgresses);
 
                 for (int i = 0; i < clients.size(); i++) {
                     ClientContainer clientContainer = clients.get(i);
@@ -81,7 +98,7 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
                     //rearm the joining barrier
                     clientContainer.countDownLatch = new CountDownLatch(1);
                     if (!clientContainer.client.hasError()) {
-                        clientContainer.client.sendJobs(localSchedules.get(i % clientsToCall),
+                        clientContainer.client.sendJobs(beNodeSchedules.get(i),
                                 new SendJobsCallback(clientContainer, backEnds));
                     } else {
                         clientContainer.countDownLatch.countDown();

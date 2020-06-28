@@ -30,7 +30,7 @@ public class Client {
 				List<Job> schedule = new ArrayList<>();
 				for (int i = 0; i < currentLine.length; i++) {
 					String jobSplit[] = currentLine[i].split(",");
-					int ingress = Integer.valueOf(jobSplit[0].substring(1));
+					int id = Integer.valueOf(jobSplit[0].substring(1));
 					jobSplit = jobSplit[1].split(":");
 					String egress = jobSplit[0].substring(1);
 					boolean isNegative = false;
@@ -53,7 +53,7 @@ public class Client {
 					} else {
 						timeUnits = Integer.valueOf(jobSplit[1].substring(1));
 					}
-					schedule.add(new Job(ingress, egress, timeUnits, epsilon));
+					schedule.add(new Job(id, egress, timeUnits, epsilon));
 				}
 				schedules.add(schedule);
 			}

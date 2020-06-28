@@ -1,5 +1,5 @@
 struct Job {
-  1: i32 ingress,
+  1: i32 id,
   2: string egress,
   3: i32 timeUnits,
   4: i32 epsilon
