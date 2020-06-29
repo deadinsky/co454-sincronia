@@ -17,6 +17,7 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
     private Timer timer = new Timer();
     private int numClients = 0;
     private List<List<Job>> schedules = new ArrayList<>();
+    private List<Integer> ingresses = new ArrayList<>();
     private LinkedHashSet<Integer> ids = new LinkedHashSet<Integer>();
     private LinkedHashSet<String> egresses = new LinkedHashSet<String>();
 
@@ -42,42 +43,87 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
     }
     static Logger log = Logger.getLogger(FENodeServiceHandler.class.getName());
 
-    public ArrayList<List<Job>> calculateSchedules(List<List<Job>> localSchedules, Integer[] localIds,
-                                                         String[] localEngresses) {
+    public int compareIntegersWithEpsilon(int v1, int e1, int v2, int e2) {
+        if (v1 > v2)
+            return 1;
+        if (v2 > v1)
+            return 2;
+        if (e1 > e2)
+            return 1;
+        if (e2 > e1)
+            return 2;
+        return 0;
+    }
+
+    public ArrayList<List<Job>> calculateSchedules(List<List<Job>> localSchedules, Integer[] localIngresses,
+                                                   Integer[] localIds, String[] localEgresses) {
         ArrayList<List<Job>> beNodeSchedules = new ArrayList<>();
-        for (int i = 0; i < localEngresses.length; i++) {
-            beNodeSchedules.add(new ArrayList<>());
+        Map<Integer, Integer> idDict = new HashMap<>();
+        Map<String, Integer> egressDict = new HashMap<>();
+        int weights[] = new int[localIds.length];
+        int weightsEpsilon[] = new int[localIds.length];
+        boolean isInList[] = new boolean[localIds.length];
+        int ingressTimeUnits[] = new int[localIngresses.length];
+
+        for (int i = 0; i < localIds.length; i++) {
+            idDict.put(localIds[i], i);
+            weights[i] = 1;
+            weightsEpsilon[i] = 0;
+            isInList[i] = false;
         }
-        int i = 0;
+        for (int i = 0; i < localEgresses.length; i++) {
+            beNodeSchedules.add(new ArrayList<Job>());
+            egressDict.put(localEgresses[i], i);
+        }
+        for (int i = 0; i < localIngresses.length; i++) {
+            ingressTimeUnits[i] = 0;
+        }
+        int index = 0;
         for (List<Job> schedule : localSchedules) {
             for (Job job : schedule) {
-                beNodeSchedules.get(i).add(job);
-                i = (i + 1) % localEngresses.length;
+                ingressTimeUnits[index] += job.timeUnits;
+                beNodeSchedules.get(index).add(job);
+            }
+            index++;
+        }
+        int maxValue = 0;
+        int maxId = 0;
+        for (int i = 0; i < localIngresses.length; i++) {
+            if (ingressTimeUnits[i] > maxValue || (ingressTimeUnits[i] == maxValue
+                    && localIngresses[i] >= maxId)) {
+                maxValue = ingressTimeUnits[i];
+                maxId = localIngresses[i];
             }
         }
         return beNodeSchedules;
     }
 
-    public int sendJobs(List<Job> schedule) throws org.apache.thrift.TException {
+    public int sendJobs(List<Job> schedule, int ingress) throws org.apache.thrift.TException {
         List<List<Job>> localSchedules;
         boolean areJobsLoaded = false;
-        String localEgresses[];
+        Integer localIngresses[];
         Integer localIds[];
+        String localEgresses[];
         for (Job job : schedule) {
             ids.add(job.id);
             egresses.add(job.egress);
         }
         synchronized (this) {
             schedules.add(schedule);
+            ingresses.add(ingress);
             areJobsLoaded = (schedules.size() == numClients);
             if (!areJobsLoaded) {
                 return 0;
             }
             localSchedules = new ArrayList<>();
             localSchedules.addAll(schedules);
+            localIngresses = ingresses.toArray(new Integer[0]);
             localIds = ids.toArray(new Integer[0]);
+            Arrays.sort(localIds);
             localEgresses = egresses.toArray(new String[0]);
+            Arrays.sort(localEgresses);
             schedules.clear();
+            ingresses.clear();
             ids.clear();
             egresses.clear();
         }
@@ -90,7 +136,7 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
                 }
 
                 ArrayList<List<Job>> beNodeSchedules = calculateSchedules(localSchedules,
-                        localIds, localEgresses);
+                        localIngresses, localIds, localEgresses);
 
                 for (int i = 0; i < clients.size(); i++) {
                     ClientContainer clientContainer = clients.get(i);
@@ -98,7 +144,7 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
                     //rearm the joining barrier
                     clientContainer.countDownLatch = new CountDownLatch(1);
                     if (!clientContainer.client.hasError()) {
-                        clientContainer.client.sendJobs(beNodeSchedules.get(i),
+                        clientContainer.client.sendJobs(beNodeSchedules.get(i), localIngresses[i],
                                 new SendJobsCallback(clientContainer, backEnds));
                     } else {
                         clientContainer.countDownLatch.countDown();

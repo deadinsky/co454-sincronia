@@ -93,7 +93,7 @@ public class Client {
 					SincroniaService.Client client = new SincroniaService.Client(protocol);
 					transport.open();
 
-					client.sendJobs(schedules.get(finalI));
+					client.sendJobs(schedules.get(finalI), finalI+1);
 					transport.close();
 				} catch (IllegalArgument illegalArgument) {
 					illegalArgument.printStackTrace();

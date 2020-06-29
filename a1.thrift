@@ -10,7 +10,7 @@ exception IllegalArgument {
 }
 
 service SincroniaService {
- i32 sendJobs (1: list<Job> schedule);
+ i32 sendJobs (1: list<Job> schedule, 2: i32 ingress);
  oneway void setClients (1: i32 numClients);
  oneway void initialize (1: string hostname, 2: i32 port, 3: i32 numThreads);
  oneway void ping();

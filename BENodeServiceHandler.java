@@ -8,7 +8,7 @@ import java.util.List;
 public class BENodeServiceHandler implements SincroniaService.Iface {
 	static Logger log = Logger.getLogger(BENodeServiceHandler.class.getName());
 
-    public int sendJobs(List<Job> schedule) {
+    public int sendJobs(List<Job> schedule, int ingress) {
     	int currentTime = 0;
 		for (Job job : schedule) {
 			log.info("BENode " + job.egress + " (t = " + currentTime + "): Job " +
