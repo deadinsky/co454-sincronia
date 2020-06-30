@@ -43,72 +43,113 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
     }
     static Logger log = Logger.getLogger(FENodeServiceHandler.class.getName());
 
-    public int compareIntegersWithEpsilon(int v1, int e1, int v2, int e2) {
-        if (v1 > v2)
-            return 1;
-        if (v2 > v1)
-            return 2;
-        if (e1 > e2)
-            return 1;
-        if (e2 > e1)
-            return 2;
-        return 0;
-    }
-
-    public ArrayList<List<Job>> calculateSchedules(List<List<Job>> localSchedules, Integer[] localIngresses,
+    public ArrayList<List<Job>> calculateSchedules(ArrayList<List<Job>> localSchedules, Integer[] localIngresses,
                                                    Integer[] localIds, String[] localEgresses) {
         ArrayList<List<Job>> beNodeSchedules = new ArrayList<>();
         Map<Integer, Integer> idDict = new HashMap<>();
         Map<String, Integer> egressDict = new HashMap<>();
-        int weights[] = new int[localIds.length];
-        int weightsEpsilon[] = new int[localIds.length];
-        boolean isInList[] = new boolean[localIds.length];
+        EpsilonFraction weights[] = new EpsilonFraction[localIds.length];
+        int jobDurations[] = new int[localIds.length];
+        int jobDurationsEps[] = new int[localIds.length];
+        int jobOrdering[] = new int[localIds.length];
+        boolean isScheduled[] = new boolean[localIds.length];
         int ingressTimeUnits[] = new int[localIngresses.length];
+        int ingressEpsilons[] = new int[localIngresses.length];
 
         for (int i = 0; i < localIds.length; i++) {
             idDict.put(localIds[i], i);
-            weights[i] = 1;
-            weightsEpsilon[i] = 0;
-            isInList[i] = false;
+            weights[i] = EpsilonFraction.one;
+            isScheduled[i] = false;
         }
         for (int i = 0; i < localEgresses.length; i++) {
             beNodeSchedules.add(new ArrayList<Job>());
             egressDict.put(localEgresses[i], i);
         }
-        for (int i = 0; i < localIngresses.length; i++) {
-            ingressTimeUnits[i] = 0;
-        }
-        int index = 0;
-        for (List<Job> schedule : localSchedules) {
-            for (Job job : schedule) {
-                ingressTimeUnits[index] += job.timeUnits;
-                beNodeSchedules.get(index).add(job);
+        for (int n = localIds.length; n > 0; n--) {
+            for (int i = 0; i < localIngresses.length; i++) {
+                ingressTimeUnits[i] = 0;
+                ingressEpsilons[i] = 0;
             }
-            index++;
-        }
-        int maxValue = 0;
-        int maxId = 0;
-        for (int i = 0; i < localIngresses.length; i++) {
-            if (ingressTimeUnits[i] > maxValue || (ingressTimeUnits[i] == maxValue
-                    && localIngresses[i] >= maxId)) {
-                maxValue = ingressTimeUnits[i];
-                maxId = localIngresses[i];
+            //determine what jobs remaining are at each port
+            int index = 0;
+            for (List<Job> schedule : localSchedules) {
+                for (Job job : schedule) {
+                    if (!isScheduled[idDict.get(job.id)]) {
+                        ingressTimeUnits[index] += job.timeUnits;
+                        ingressEpsilons[index] += job.epsilon;
+                    }
+                }
+                index++;
+            }
+            //determine which port is most bottlenecked
+            int maxValue = 0;
+            int maxValueEps = 0;
+            int maxIngressIndex = -1; //b
+            for (int i = 0; i < localIngresses.length; i++) {
+                if (maxIngressIndex == -1 || ingressTimeUnits[i] > maxValue || (ingressTimeUnits[i] == maxValue && (
+                        ingressEpsilons[i] > maxValueEps || (ingressEpsilons[i] == maxValueEps &&
+                        localIngresses[i] >= localIngresses[maxIngressIndex])))) {
+                    maxValue = ingressTimeUnits[i];
+                    maxValueEps = ingressEpsilons[i];
+                    maxIngressIndex = i;
+                }
+            }
+            //now figure out the durations of each job at specified port
+            for (int i = 0; i < localIds.length; i++) {
+                jobDurations[i] = 0;
+                jobDurationsEps[i] = 0;
+            }
+            for (Job job : localSchedules.get(maxIngressIndex)) {
+                if (!isScheduled[idDict.get(job.id)]) {
+                    jobDurations[idDict.get(job.id)] += job.timeUnits;
+                    jobDurationsEps[idDict.get(job.id)] += job.epsilon;
+                }
+            }
+            //find weighted largest job
+            EpsilonFraction minValue = null;
+            int minJobIndex = -1;
+            for (int i = 0; i < localIds.length; i++) {
+                if (jobDurations[i] > 0 || (jobDurations[i] == 0 && jobDurationsEps[i] > 0)) {
+                    EpsilonFraction curValue = EpsilonFraction.divideFractions(weights[i],
+                            new EpsilonFraction(jobDurations[i], jobDurationsEps[i]));
+                    if (!isScheduled[i] && (minValue == null || minValue.isGreater(curValue))) {
+                        minValue = curValue;
+                        minJobIndex = i;
+                    }
+                }
+            }
+            //schedule said job last
+            isScheduled[minJobIndex] = true;
+            jobOrdering[n - 1] = minJobIndex;
+            //update weights
+            weights[minJobIndex] = EpsilonFraction.zero;
+            for (int i = 0; i < localIds.length; i++) {
+                if (!isScheduled[i] && jobDurations[i] > 0) {
+                    weights[i] = EpsilonFraction.subtractFractions(weights[i],
+                            EpsilonFraction.multiplyFractions(minValue, jobDurations[i]));
+                }
             }
         }
-        return beNodeSchedules;
+        String tmp = "Order of jobs: ";
+        for (int i = 0; i < localIds.length; i++) {
+            tmp += localIds[jobOrdering[i]] + "; ";
+        }
+        log.info(tmp);
+        //TODO: Add ordered schedules
+        return localSchedules;
     }
 
     public int sendJobs(List<Job> schedule, int ingress) throws org.apache.thrift.TException {
-        List<List<Job>> localSchedules;
+        ArrayList<List<Job>> localSchedules;
         boolean areJobsLoaded = false;
         Integer localIngresses[];
         Integer localIds[];
         String localEgresses[];
-        for (Job job : schedule) {
-            ids.add(job.id);
-            egresses.add(job.egress);
-        }
         synchronized (this) {
+            for (Job job : schedule) {
+                ids.add(job.id);
+                egresses.add(job.egress);
+            }
             schedules.add(schedule);
             ingresses.add(ingress);
             areJobsLoaded = (schedules.size() == numClients);
@@ -132,7 +173,7 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
                 ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localEgresses.length);
                 log.info("Calling " + clients.size() + " backend node thread(s)");
                 if (localEgresses.length != clients.size()) {
-                    log.info("The number of BENodes expected is more than what's available.");
+                    log.info("The number of BENodes expected is more than what's available." + localEgresses.length);
                 }
 
                 ArrayList<List<Job>> beNodeSchedules = calculateSchedules(localSchedules,
