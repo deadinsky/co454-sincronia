@@ -18,7 +18,7 @@ public class Client {
 			System.err.println("Usage: java Client FE_host FE_port schedule_file");
 			System.exit(-1);
 		}
-		List<List<Job>> schedules = new ArrayList<>();
+		ArrayList<List<Job>> schedules = new ArrayList<>();
 		File scheduleFile = new File(args[2]);
 		Integer numClients = 0;
 		try {
@@ -27,7 +27,7 @@ public class Client {
 			numClients = Integer.valueOf(firstLine[1]);
 			while (scheduleReader.hasNextLine()) {
 				String currentLine[] = scheduleReader.nextLine().split(";");
-				List<Job> schedule = new ArrayList<>();
+				List<Job> schedule = new ArrayList<Job>();
 				for (int i = 0; i < currentLine.length; i++) {
 					String jobSplit[] = currentLine[i].split(",");
 					int id = Integer.valueOf(jobSplit[0].substring(1));
