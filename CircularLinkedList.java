@@ -1,5 +1,6 @@
 import java.util.Objects;
 
+/* Original Author: Matthew Belisle, 2020 */
 public class CircularLinkedList {
     //Represents the node of list.
     private int size = 0;

@@ -32,7 +32,7 @@ if [ $ret -ne 0 ]; then
     exit 1
 fi
 $THRIFT_CC --version
-$THRIFT_CC --gen java:generated_annotations=suppress a1.thrift
+$THRIFT_CC --gen java:generated_annotations=suppress sincronia.thrift
 
 
 echo --- Compiling Java
