@@ -1,0 +1,16 @@
+0 [main] INFO BENode  - Launching BE node on port 10124 at host tdedinsk
+Initialized client
+1037 [main] INFO BENode  - tdedinsk
+1056 [main] INFO BENode  - Connected to Frontend
+7873 [pool-1-thread-2] INFO BENodeServiceHandler  - BENode a (t = 0 e0): Job 2 processed in 2 e1
+7874 [pool-1-thread-2] INFO BENodeServiceHandler  - BENode a (t = 2 e1): Job 1 processed in 1 e0
+7874 [pool-1-thread-2] INFO BENodeServiceHandler  - BENode a (t = 3 e1): Job 1 processed in 1 e0
+7875 [pool-1-thread-4] INFO BENodeServiceHandler  - BENode b (t = 0 e0): Job 3 processed in 2 e1
+7875 [pool-1-thread-4] INFO BENodeServiceHandler  - BENode b (t = 2 e1): Job 1 processed in 1 e0
+7875 [pool-1-thread-4] INFO BENodeServiceHandler  - BENode b (t = 3 e1): Job 1 processed in 1 e0
+7875 [pool-1-thread-3] INFO BENodeServiceHandler  - BENode c (t = 0 e0): Job 4 processed in 2 e1
+7876 [pool-1-thread-3] INFO BENodeServiceHandler  - BENode c (t = 2 e1): Job 1 processed in 1 e0
+7876 [pool-1-thread-3] INFO BENodeServiceHandler  - BENode c (t = 3 e1): Job 1 processed in 1 e0
+7877 [pool-1-thread-5] INFO BENodeServiceHandler  - BENode d (t = 0 e0): Job 1 processed in 1 e0
+7877 [pool-1-thread-5] INFO BENodeServiceHandler  - BENode d (t = 1 e0): Job 5 processed in 2 e1
+7877 [pool-1-thread-5] INFO BENodeServiceHandler  - BENode d (t = 3 e1): Job 1 processed in 1 e0
