@@ -1,4 +1,3 @@
-import com.google.common.primitives.Booleans;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
