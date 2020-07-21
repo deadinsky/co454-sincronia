@@ -77,33 +77,39 @@ public class FENodeServiceHandler implements SincroniaService.Iface {
             egresses.clear();
         }
         if (areJobsLoaded) {
+            ArrayList<ArrayList<Job>> beNodeSchedules = CalculateSchedules.calculateSchedules(
+                    localSchedules, localIngresses, localIds, localEgresses);
+            if (beNodeSchedules.size() != localEgresses.length) {
+                log.info("Error regarding schedule allocation.");
+            }
             try {
-                ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localEgresses.length);
-                log.info("Calling " + clients.size() + " backend node thread(s)");
-                if (localEgresses.length != clients.size()) {
-                    log.info("The number of BENodes expected is more than what's available." + localEgresses.length);
-                }
-
-                ArrayList<ArrayList<Job>> beNodeSchedules = CalculateSchedules.calculateSchedules(
-                        localSchedules, localIngresses, localIds, localEgresses);
-
-                for (int i = 0; i < clients.size(); i++) {
-                    ClientContainer clientContainer = clients.get(i);
-                    log.debug("Locked client " + clientContainer.id + " for processing");
-                    //rearm the joining barrier
-                    clientContainer.countDownLatch = new CountDownLatch(1);
-                    if (!clientContainer.client.hasError()) {
-                        clientContainer.client.sendJobs((List<Job>)beNodeSchedules.get(i), localIngresses[i],
-                                new SendJobsCallback(clientContainer, backEnds));
-                    } else {
-                        clientContainer.countDownLatch.countDown();
+                //If there are less BENodes than expected, we need to loop
+                int schedulesProcessed = 0;
+                while (schedulesProcessed < localEgresses.length) {
+                    ArrayList<ClientContainer> clients = loadBalancer.getBalancedLoad(localEgresses.length - schedulesProcessed);
+                    log.info("Calling " + clients.size() + " backend node thread(s)");
+                    if (localEgresses.length != clients.size() & schedulesProcessed == 0) {
+                        log.info("The number of BENodes expected is more than what's available." + localEgresses.length);
                     }
-                }
+                    for (int i = 0; i < clients.size(); i++) {
+                        ClientContainer clientContainer = clients.get(i);
+                        log.debug("Locked client " + clientContainer.id + " for processing");
+                        //rearm the joining barrier
+                        clientContainer.countDownLatch = new CountDownLatch(1);
+                        if (!clientContainer.client.hasError()) {
+                            clientContainer.client.sendJobs((List<Job>) beNodeSchedules.get(i + schedulesProcessed), localIngresses[i],
+                                    new SendJobsCallback(clientContainer, backEnds));
+                        } else {
+                            clientContainer.countDownLatch.countDown();
+                        }
+                    }
 
-                for (ClientContainer client : clients) {
-                    client.countDownLatch.await();
-                    log.debug("Unlocked client " + client.id + " from processing");
-                    client.lock.release();
+                    for (ClientContainer client : clients) {
+                        client.countDownLatch.await();
+                        log.debug("Unlocked client " + client.id + " from processing");
+                        client.lock.release();
+                    }
+                    schedulesProcessed += clients.size();
                 }
                 return 0;
             } catch (Exception e) {
