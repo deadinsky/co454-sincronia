@@ -9,14 +9,7 @@ public class BENodeServiceHandler implements SincroniaService.Iface {
 	static Logger log = Logger.getLogger(BENodeServiceHandler.class.getName());
 
     public int sendJobs(List<Job> schedule, int ingress) {
-    	int currentTime = 0;
-		int currentTimeEps = 0;
-		for (Job job : schedule) {
-			log.info("BENode " + job.egress + " (t = " + currentTime + " e" + currentTimeEps + "): Job " +
-					job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
-			currentTime += job.timeUnits;
-			currentTimeEps += job.epsilon;
-		}
+    	CalculateSchedules.printSchedule(schedule);
 		return 0;
     }
 

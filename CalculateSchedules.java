@@ -1,12 +1,61 @@
 import org.apache.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.*;
 
 public class CalculateSchedules {
-    static Logger log = Logger.getLogger(FENodeServiceHandler.class.getName());
+    static Logger log = Logger.getLogger(CalculateSchedules.class.getName());
+    public static ArrayList<ArrayList<Job>> parseSchedules(String fileName) {
+        ArrayList<ArrayList<Job>> schedules = new ArrayList<>();
+        File scheduleFile = new File(fileName);
+        Integer numClients = 0;
+        try {
+            Scanner scheduleReader = new Scanner(scheduleFile);
+            String firstLine[] = scheduleReader.nextLine().split(" ");
+            numClients = Integer.valueOf(firstLine[1]);
+            while (scheduleReader.hasNextLine()) {
+                String currentLine[] = scheduleReader.nextLine().split(";");
+                ArrayList<Job> schedule = new ArrayList<Job>();
+                for (int i = 0; i < currentLine.length; i++) {
+                    String jobSplit[] = currentLine[i].split(",");
+                    int id = Integer.valueOf(jobSplit[0].substring(1));
+                    jobSplit = jobSplit[1].split(":");
+                    String egress = jobSplit[0].substring(1);
+                    boolean isNegative = false;
+                    int epsilon = 0;
+                    int timeUnits = 0;
+                    if (jobSplit[1].contains("e")) {
+                        if (jobSplit[1].contains("-")) {
+                            jobSplit = jobSplit[1].split("-");
+                            isNegative = true;
+                        } else if (jobSplit[1].contains("+")) {
+                            jobSplit = jobSplit[1].split("\\+");
+                        }
+                        timeUnits = Integer.valueOf(jobSplit[0].substring(1));
+                        if (jobSplit[1].charAt(0) == 'e') {
+                            epsilon = (isNegative ? -1 : 1);
+                        } else {
+                            jobSplit = jobSplit[1].split("e");
+                            epsilon = Integer.valueOf(jobSplit[0]) * (isNegative ? -1 : 1);
+                        }
+                    } else {
+                        timeUnits = Integer.valueOf(jobSplit[1].substring(1));
+                    }
+                    schedule.add(new Job(id, egress, timeUnits, epsilon));
+                }
+                schedules.add(schedule);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (numClients != schedules.size()) {
+            System.err.println("Incorrect input file format, client size discrepancy.");
+            System.exit(-1);
+        }
+        return schedules;
+    }
+
     public static ArrayList<ArrayList<Job>> calculateSchedules(ArrayList<ArrayList<Job>> localSchedules,
                                                         Integer[] localIngresses, Integer[] localIds,
                                                         String[] localEgresses) {
@@ -187,5 +236,22 @@ public class CalculateSchedules {
             }
         }
         return beNodeSchedules;
+    }
+
+    public static void printSchedule(List<Job> schedule) {
+        int currentTime = 0;
+        int currentTimeEps = 0;
+        for (Job job : schedule) {
+            log.info("BENode " + job.egress + " (t = " + currentTime + " e" + currentTimeEps + "): Job " +
+                    job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
+            currentTime += job.timeUnits;
+            currentTimeEps += job.epsilon;
+        }
+    }
+
+    public static void printSchedules(ArrayList<ArrayList<Job>> beNodeSchedules) {
+        for (ArrayList<Job> schedule : beNodeSchedules) {
+            CalculateSchedules.printSchedule(schedule);
+        }
     }
 }

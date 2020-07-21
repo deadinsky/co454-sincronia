@@ -18,52 +18,7 @@ public class Client {
 			System.err.println("Usage: java Client FE_host FE_port schedule_file");
 			System.exit(-1);
 		}
-		ArrayList<List<Job>> schedules = new ArrayList<>();
-		File scheduleFile = new File(args[2]);
-		Integer numClients = 0;
-		try {
-			Scanner scheduleReader = new Scanner(scheduleFile);
-			String firstLine[] = scheduleReader.nextLine().split(" ");
-			numClients = Integer.valueOf(firstLine[1]);
-			while (scheduleReader.hasNextLine()) {
-				String currentLine[] = scheduleReader.nextLine().split(";");
-				List<Job> schedule = new ArrayList<Job>();
-				for (int i = 0; i < currentLine.length; i++) {
-					String jobSplit[] = currentLine[i].split(",");
-					int id = Integer.valueOf(jobSplit[0].substring(1));
-					jobSplit = jobSplit[1].split(":");
-					String egress = jobSplit[0].substring(1);
-					boolean isNegative = false;
-					int epsilon = 0;
-					int timeUnits = 0;
-					if (jobSplit[1].contains("e")) {
-						if (jobSplit[1].contains("-")) {
-							jobSplit = jobSplit[1].split("-");
-							isNegative = true;
-						} else if (jobSplit[1].contains("+")) {
-							jobSplit = jobSplit[1].split("\\+");
-						}
-						timeUnits = Integer.valueOf(jobSplit[0].substring(1));
-						if (jobSplit[1].charAt(0) == 'e') {
-							epsilon = (isNegative ? -1 : 1);
-						} else {
-							jobSplit = jobSplit[1].split("e");
-							epsilon = Integer.valueOf(jobSplit[0]) * (isNegative ? -1 : 1);
-						}
-					} else {
-						timeUnits = Integer.valueOf(jobSplit[1].substring(1));
-					}
-					schedule.add(new Job(id, egress, timeUnits, epsilon));
-				}
-				schedules.add(schedule);
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		if (numClients != schedules.size()) {
-			System.err.println("Incorrect input file format, client size discrepancy.");
-			System.exit(-1);
-		}
+		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[2]);
 		try {
 			//this is thrift initialization for a client
 			TSocket sock = new TSocket(args[0], Integer.parseInt(args[1]));
@@ -72,7 +27,7 @@ public class Client {
 			SincroniaService.Client client = new SincroniaService.Client(protocol);
 			transport.open();
 
-			client.setClients(numClients);
+			client.setClients(schedules.size());
 			transport.close();
 		} catch (IllegalArgument illegalArgument) {
 			illegalArgument.printStackTrace();
@@ -82,7 +37,7 @@ public class Client {
 			e.printStackTrace();
 		}
 		ArrayList<Thread> threads = new ArrayList<>();
-		for (int i = 0; i < numClients; i++){
+		for (int i = 0; i < schedules.size(); i++){
 			int finalI = i;
 			Runnable r = () -> {
 				try {
