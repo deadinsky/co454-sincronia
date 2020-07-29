@@ -8,43 +8,57 @@ public class CalculateSchedules {
     static Logger log = Logger.getLogger(CalculateSchedules.class.getName());
     public static ArrayList<ArrayList<Job>> parseSchedules(String fileName) {
         ArrayList<ArrayList<Job>> schedules = new ArrayList<>();
+        int ingressLength = 0;
+        Map<String, Integer> ingressDict = new HashMap<>();
         File scheduleFile = new File(fileName);
         Integer numClients = 0;
         try {
             Scanner scheduleReader = new Scanner(scheduleFile);
             String firstLine[] = scheduleReader.nextLine().split(" ");
-            numClients = Integer.valueOf(firstLine[1]);
+            numClients = Integer.valueOf(firstLine[0]);
+            for (int i = 0; i < numClients; i++) {
+                schedules.add(new ArrayList<Job>());
+            }
             while (scheduleReader.hasNextLine()) {
-                String currentLine[] = scheduleReader.nextLine().split(";");
-                ArrayList<Job> schedule = new ArrayList<Job>();
-                for (int i = 0; i < currentLine.length; i++) {
-                    String jobSplit[] = currentLine[i].split(",");
-                    int id = Integer.valueOf(jobSplit[0].substring(1));
-                    jobSplit = jobSplit[1].split(":");
-                    String egress = jobSplit[0].substring(1);
-                    boolean isNegative = false;
-                    int epsilon = 0;
+                String currentLine[] = scheduleReader.nextLine().split(" ");
+                int coflowId = Integer.parseInt(currentLine[0]);
+                for (int i = 5; i < currentLine.length; i += 3) {
+                    String ingress = currentLine[i];
+                    int ingressIndex = ingressDict.getOrDefault(ingress, -1);
+                    if (ingressIndex == -1) {
+                        ingressIndex = ingressLength;
+                        ingressDict.put(ingress, ingressLength);
+                        ingressLength++;
+                    }
+                    String egress = currentLine[i+1];
                     int timeUnits = 0;
-                    if (jobSplit[1].contains("e")) {
-                        if (jobSplit[1].contains("-")) {
-                            jobSplit = jobSplit[1].split("-");
+                    int epsilon = 0;
+                    if (currentLine[i+2].contains("e")) {
+                        String timeSplit[];
+                        String epsilonString;
+                        boolean isNegative = false;
+                        if (currentLine[i+2].contains("-")) {
+                            timeSplit = currentLine[i+2].split("-");
+                            timeUnits = Integer.valueOf(timeSplit[0]);
+                            epsilonString = timeSplit[1];
                             isNegative = true;
-                        } else if (jobSplit[1].contains("+")) {
-                            jobSplit = jobSplit[1].split("\\+");
+                        } else if (currentLine[i+2].contains("+")) {
+                            timeSplit = currentLine[i+2].split("\\+");
+                            timeUnits = Integer.valueOf(timeSplit[0]);
+                            epsilonString = timeSplit[1];
+                        } else {
+                            epsilonString = currentLine[i+2];
                         }
-                        timeUnits = Integer.valueOf(jobSplit[0].substring(1));
-                        if (jobSplit[1].charAt(0) == 'e') {
+                        if (epsilonString.length() == 1) {
                             epsilon = (isNegative ? -1 : 1);
                         } else {
-                            jobSplit = jobSplit[1].split("e");
-                            epsilon = Integer.valueOf(jobSplit[0]) * (isNegative ? -1 : 1);
+                            epsilon = Integer.valueOf(epsilonString.substring(0, epsilonString.length() - 1)) * (isNegative ? -1 : 1);
                         }
                     } else {
-                        timeUnits = Integer.valueOf(jobSplit[1].substring(1));
+                        timeUnits = Integer.valueOf(currentLine[i+2]);
                     }
-                    schedule.add(new Job(id, egress, timeUnits, epsilon));
+                    schedules.get(ingressIndex).add(new Job(coflowId, egress, timeUnits, epsilon));
                 }
-                schedules.add(schedule);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
