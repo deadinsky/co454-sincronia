@@ -19,9 +19,11 @@ public class CalculateSchedules {
             for (int i = 0; i < numClients; i++) {
                 schedules.add(new ArrayList<Job>());
             }
+            //formatting is determined by sincronia schedule generator
             while (scheduleReader.hasNextLine()) {
                 String currentLine[] = scheduleReader.nextLine().split(" ");
                 int coflowId = Integer.parseInt(currentLine[0]);
+                int releaseTime = Integer.parseInt(currentLine[1]);
                 for (int i = 5; i < currentLine.length; i += 3) {
                     String ingress = currentLine[i];
                     int ingressIndex = ingressDict.getOrDefault(ingress, -1);
@@ -57,7 +59,7 @@ public class CalculateSchedules {
                     } else {
                         timeUnits = Integer.valueOf(currentLine[i+2]);
                     }
-                    schedules.get(ingressIndex).add(new Job(coflowId, egress, timeUnits, epsilon));
+                    schedules.get(ingressIndex).add(new Job(coflowId, egress, 1, releaseTime, timeUnits, epsilon));
                 }
             }
         } catch (FileNotFoundException e) {
@@ -76,6 +78,7 @@ public class CalculateSchedules {
         Map<Integer, Integer> idDict = new HashMap<>();
         Map<String, Integer> egressDict = new HashMap<>();
         EpsilonFraction weights[] = new EpsilonFraction[localIds.length];
+        EpsilonFraction releaseTimes[] = new EpsilonFraction[localIds.length];
         int jobDurations[] = new int[localIds.length];
         int jobDurationsEps[] = new int[localIds.length];
         int jobOrdering[] = new int[localIds.length];
@@ -85,11 +88,20 @@ public class CalculateSchedules {
 
         for (int i = 0; i < localIds.length; i++) {
             idDict.put(localIds[i], i);
-            weights[i] = EpsilonFraction.one;
             isScheduled[i] = false;
         }
         for (int i = 0; i < localEgresses.length; i++) {
             egressDict.put(localEgresses[i], i);
+        }
+        //get weights and release times
+        for (ArrayList<Job> schedule : localSchedules) {
+            for (Job job : schedule) {
+                int index = idDict.get(job.id);
+                if (weights[index] == null) {
+                    weights[index] = new EpsilonFraction(job.weight);
+                    releaseTimes[index] = new EpsilonFraction(job.releaseTime);
+                }
+            }
         }
         for (int n = localIds.length; n > 0; n--) {
             for (int i = 0; i < localIngresses.length; i++) {
@@ -207,11 +219,21 @@ public class CalculateSchedules {
         while (!nextIngress.isEmpty()) {
             int ingressIndex = nextIngress.get(0);
             ArrayList<Job> ingressSchedule = localSchedules.get(ingressIndex);
-            Integer nextEgressIndex = egressDict.get(ingressSchedule.get(0).egress);
+            EpsilonFraction nextIngressCheck = ingressTimes[ingressIndex];
             boolean jobFound = false;
-            //find a job from the next available ingress that has an open egress
+            //find a job from the next available ingress that has an open egress with available job
             for (int i = 0; !jobFound && i < ingressSchedule.size(); i++) {
-                if (!egressTimes[egressDict.get(ingressSchedule.get(i).egress)].isGreater(ingressTimes[ingressIndex])) {
+                if (releaseTimes[idDict.get(ingressSchedule.get(i).id)].isGreater(ingressTimes[ingressIndex])) {
+                    if (nextIngressCheck.isGreater(releaseTimes[idDict.get(ingressSchedule.get(i).id)])) {
+                        nextIngressCheck = releaseTimes[idDict.get(ingressSchedule.get(i).id)];
+                    }
+                }
+                else if (egressTimes[egressDict.get(ingressSchedule.get(i).egress)].isGreater(ingressTimes[ingressIndex])) {
+                    if (nextIngressCheck.isGreater(egressTimes[egressDict.get(ingressSchedule.get(i).egress)])) {
+                        nextIngressCheck = releaseTimes[idDict.get(ingressSchedule.get(i).id)];
+                    }
+                }
+                else {
                     //ingress and egress will now be free at the same time
                     ingressTimes[ingressIndex] = EpsilonFraction.addFractions(ingressTimes[ingressIndex],
                             new EpsilonFraction(ingressSchedule.get(i).timeUnits, ingressSchedule.get(i).epsilon));
@@ -220,14 +242,11 @@ public class CalculateSchedules {
                     ingressSchedule.remove(i);
                     jobFound = true;
                     //record the next available egress, just in case none are currently available
-                } else if (egressTimes[nextEgressIndex].isGreater(
-                        egressTimes[egressDict.get(ingressSchedule.get(i).egress)])) {
-                    nextEgressIndex = egressDict.get(ingressSchedule.get(i).egress);
                 }
             }
             //if no applicable egress is available, let the job wait until there is one
             if (!jobFound) {
-                ingressTimes[ingressIndex] = egressTimes[nextEgressIndex];
+                ingressTimes[ingressIndex] = nextIngressCheck;
             }
             //if no jobs are left for the ingress, remove the index, otherwise add it back in line
             if (localSchedules.get(ingressIndex).isEmpty()) {
