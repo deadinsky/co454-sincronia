@@ -20,6 +20,9 @@ public class CalculateSchedules {
                 schedules.add(new ArrayList<Job>());
             }
             //formatting is determined by sincronia schedule generator
+            //https://github.com/sincronia-coflow/workload-generator
+            //first line: <number of ingress/egress ports> <number of coflows>
+            //other lines: <(coflow) id> <releaseTime> <> <> <> (for each flow: <ingress> <egress> <size (timeUnits)>)
             while (scheduleReader.hasNextLine()) {
                 String currentLine[] = scheduleReader.nextLine().split(" ");
                 int coflowId = Integer.parseInt(currentLine[0]);
@@ -35,6 +38,7 @@ public class CalculateSchedules {
                     String egress = currentLine[i+1];
                     int timeUnits = 0;
                     int epsilon = 0;
+                    //this is to account for epsilon inclusion; generator will only touch "else"
                     if (currentLine[i+2].contains("e")) {
                         String timeSplit[];
                         String epsilonString;
@@ -54,7 +58,8 @@ public class CalculateSchedules {
                         if (epsilonString.length() == 1) {
                             epsilon = (isNegative ? -1 : 1);
                         } else {
-                            epsilon = Integer.valueOf(epsilonString.substring(0, epsilonString.length() - 1)) * (isNegative ? -1 : 1);
+                            epsilon = Integer.valueOf(epsilonString.substring(0, epsilonString.length() - 1))
+                                    * (isNegative ? -1 : 1);
                         }
                     } else {
                         timeUnits = Integer.valueOf(currentLine[i+2]);
@@ -78,7 +83,9 @@ public class CalculateSchedules {
         Map<Integer, Integer> idDict = new HashMap<>();
         Map<String, Integer> egressDict = new HashMap<>();
         EpsilonFraction weights[] = new EpsilonFraction[localIds.length];
+        int originalWeights[] = new int[localIds.length];
         EpsilonFraction releaseTimes[] = new EpsilonFraction[localIds.length];
+        EpsilonFraction finishTimes[] = new EpsilonFraction[localIds.length];
         int jobDurations[] = new int[localIds.length];
         int jobDurationsEps[] = new int[localIds.length];
         int jobOrdering[] = new int[localIds.length];
@@ -98,8 +105,10 @@ public class CalculateSchedules {
             for (Job job : schedule) {
                 int index = idDict.get(job.id);
                 if (weights[index] == null) {
-                    weights[index] = new EpsilonFraction(job.weight);
+                    originalWeights[index] = job.weight;
+                    weights[index] = new EpsilonFraction(originalWeights[index]);
                     releaseTimes[index] = new EpsilonFraction(job.releaseTime);
+                    finishTimes[index] = EpsilonFraction.zero;
                 }
             }
         }
@@ -223,7 +232,9 @@ public class CalculateSchedules {
             boolean jobFound = false;
             //find a job from the next available ingress that has an open egress with available job
             for (int i = 0; !jobFound && i < ingressSchedule.size(); i++) {
-                if (releaseTimes[idDict.get(ingressSchedule.get(i).id)].isGreater(ingressTimes[ingressIndex])) {
+                int flowIndex = idDict.get(ingressSchedule.get(i).id);
+                //record the next available egress, just in case none are currently available
+                if (releaseTimes[flowIndex].isGreater(ingressTimes[ingressIndex])) {
                     if (nextIngressCheck.isGreater(releaseTimes[idDict.get(ingressSchedule.get(i).id)])) {
                         nextIngressCheck = releaseTimes[idDict.get(ingressSchedule.get(i).id)];
                     }
@@ -239,14 +250,17 @@ public class CalculateSchedules {
                             new EpsilonFraction(ingressSchedule.get(i).timeUnits, ingressSchedule.get(i).epsilon));
                     egressTimes[egressDict.get(ingressSchedule.get(i).egress)] = ingressTimes[ingressIndex];
                     beNodeSchedules.get(egressDict.get(ingressSchedule.get(i).egress)).add(ingressSchedule.get(i));
+                    if (ingressTimes[ingressIndex].isGreater(finishTimes[flowIndex])) {
+                        finishTimes[flowIndex] = ingressTimes[ingressIndex];
+                    }
                     ingressSchedule.remove(i);
                     jobFound = true;
-                    //record the next available egress, just in case none are currently available
                 }
             }
             //if no applicable egress is available, let the job wait until there is one
             if (!jobFound) {
                 ingressTimes[ingressIndex] = nextIngressCheck;
+            } else {
             }
             //if no jobs are left for the ingress, remove the index, otherwise add it back in line
             if (localSchedules.get(ingressIndex).isEmpty()) {
@@ -268,6 +282,16 @@ public class CalculateSchedules {
                 }
             }
         }
+        //calculate wCCT
+        int wCCTInt = 0;
+        int wCCTEps = 0;
+        for (int i = 0; i < localIds.length; i++) {
+            wCCTInt += finishTimes[i].numInt * originalWeights[i];
+            wCCTEps += finishTimes[i].numEps * originalWeights[i];
+        }
+        System.out.println("wCCT = " + wCCTInt + (wCCTEps == 0 ? "" : (wCCTEps < 0 ? "" : "+") + wCCTEps + "e"));
+        System.out.println("coflows = " + localIds.length);
+        System.out.println("average wCCT = " + ((float) wCCTInt) / localIds.length);
         return beNodeSchedules;
     }
 
