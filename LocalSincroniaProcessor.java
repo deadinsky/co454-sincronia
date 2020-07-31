@@ -23,7 +23,7 @@ public class LocalSincroniaProcessor {
 		LinkedHashSet<Integer> ids = new LinkedHashSet<Integer>();
 		LinkedHashSet<String> egresses = new LinkedHashSet<String>();
 		for (int i = 0; i < schedules.size(); i++) {
-			ingresses.add(i+1);
+			ingresses.add(schedules.get(i).get(0).ingress);
 			for (Job job : schedules.get(i)) {
 				ids.add(job.id);
 				egresses.add(job.egress);
