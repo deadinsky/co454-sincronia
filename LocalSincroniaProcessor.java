@@ -18,7 +18,7 @@ public class LocalSincroniaProcessor {
 		}
 		BasicConfigurator.configure();
 
-		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[0]);
+		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[0], true);
 		ArrayList<Integer> ingresses = new ArrayList<>();
 		LinkedHashSet<Integer> ids = new LinkedHashSet<Integer>();
 		LinkedHashSet<String> egresses = new LinkedHashSet<String>();

@@ -18,7 +18,7 @@ public class Client {
 			System.err.println("Usage: java Client FE_host FE_port schedule_file");
 			System.exit(-1);
 		}
-		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[2]);
+		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[2], true);
 		try {
 			//this is thrift initialization for a client
 			TSocket sock = new TSocket(args[0], Integer.parseInt(args[1]));

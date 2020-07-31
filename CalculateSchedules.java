@@ -6,10 +6,12 @@ import java.util.*;
 
 public class CalculateSchedules {
     static Logger log = Logger.getLogger(CalculateSchedules.class.getName());
-    public static ArrayList<ArrayList<Job>> parseSchedules(String fileName) {
+    public static ArrayList<ArrayList<Job>> parseSchedules(String fileName, boolean isSortedByIngress) {
         ArrayList<ArrayList<Job>> schedules = new ArrayList<>();
-        int ingressLength = 0;
-        Map<Integer, Integer> ingressDict = new HashMap<>();
+        //determines if the schedules are grouped by ingress or egress
+        int offset = isSortedByIngress ? 0 : 1;
+        int gressLength = 0;
+        Map<String, Integer> gressDict = new HashMap<>();
         File scheduleFile = new File(fileName);
         Integer numClients = 0;
         try {
@@ -28,13 +30,14 @@ public class CalculateSchedules {
                 int coflowId = Integer.parseInt(currentLine[0]);
                 int releaseTime = Integer.parseInt(currentLine[1]);
                 for (int i = 5; i < currentLine.length; i += 3) {
-                    Integer ingress = Integer.parseInt(currentLine[i]);
-                    int ingressIndex = ingressDict.getOrDefault(ingress, -1);
-                    if (ingressIndex == -1) {
-                        ingressIndex = ingressLength;
-                        ingressDict.put(ingress, ingressLength);
-                        ingressLength++;
+                    String gress = currentLine[i + offset];
+                    int gressIndex = gressDict.getOrDefault(gress, -1);
+                    if (gressIndex == -1) {
+                        gressIndex = gressLength;
+                        gressDict.put(gress, gressLength);
+                        gressLength++;
                     }
+                    Integer ingress = Integer.parseInt(currentLine[i]);
                     String egress = currentLine[i+1];
                     int timeUnits = 0;
                     int epsilon = 0;
@@ -64,7 +67,7 @@ public class CalculateSchedules {
                     } else {
                         timeUnits = Integer.valueOf(currentLine[i+2]);
                     }
-                    schedules.get(ingressIndex).add(
+                    schedules.get(gressIndex).add(
                             new Job(coflowId, ingress, egress, 1, releaseTime, timeUnits, epsilon));
                 }
             }
