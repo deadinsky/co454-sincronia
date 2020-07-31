@@ -9,7 +9,7 @@ public class CalculateSchedules {
     public static ArrayList<ArrayList<Job>> parseSchedules(String fileName) {
         ArrayList<ArrayList<Job>> schedules = new ArrayList<>();
         int ingressLength = 0;
-        Map<String, Integer> ingressDict = new HashMap<>();
+        Map<Integer, Integer> ingressDict = new HashMap<>();
         File scheduleFile = new File(fileName);
         Integer numClients = 0;
         try {
@@ -28,7 +28,7 @@ public class CalculateSchedules {
                 int coflowId = Integer.parseInt(currentLine[0]);
                 int releaseTime = Integer.parseInt(currentLine[1]);
                 for (int i = 5; i < currentLine.length; i += 3) {
-                    String ingress = currentLine[i];
+                    Integer ingress = Integer.parseInt(currentLine[i]);
                     int ingressIndex = ingressDict.getOrDefault(ingress, -1);
                     if (ingressIndex == -1) {
                         ingressIndex = ingressLength;
@@ -64,7 +64,8 @@ public class CalculateSchedules {
                     } else {
                         timeUnits = Integer.valueOf(currentLine[i+2]);
                     }
-                    schedules.get(ingressIndex).add(new Job(coflowId, egress, 1, releaseTime, timeUnits, epsilon));
+                    schedules.get(ingressIndex).add(
+                            new Job(coflowId, ingress, egress, 1, releaseTime, timeUnits, epsilon));
                 }
             }
         } catch (FileNotFoundException e) {
@@ -165,7 +166,7 @@ public class CalculateSchedules {
                     }
                 }
             }
-            //schedule said job last
+            //schedule said job's coflow last
             isScheduled[minJobIndex] = true;
             jobOrdering[n - 1] = minJobIndex;
             //update weights
@@ -230,7 +231,7 @@ public class CalculateSchedules {
             ArrayList<Job> ingressSchedule = localSchedules.get(ingressIndex);
             EpsilonFraction nextIngressCheck = ingressTimes[ingressIndex];
             boolean jobFound = false;
-            //find a job from the next available ingress that has an open egress with available job
+            //find a job from the next available ingress that has an open egress with a released job
             for (int i = 0; !jobFound && i < ingressSchedule.size(); i++) {
                 int flowIndex = idDict.get(ingressSchedule.get(i).id);
                 //record the next available egress, just in case none are currently available
@@ -260,7 +261,6 @@ public class CalculateSchedules {
             //if no applicable egress is available, let the job wait until there is one
             if (!jobFound) {
                 ingressTimes[ingressIndex] = nextIngressCheck;
-            } else {
             }
             //if no jobs are left for the ingress, remove the index, otherwise add it back in line
             if (localSchedules.get(ingressIndex).isEmpty()) {
