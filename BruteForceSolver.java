@@ -144,15 +144,15 @@ public class BruteForceSolver {
 	//for purposes of time and use cases, epsilon will not be considered in this solver
 	//it was also assume the format of the generator (e.g. 1 to n for ingresses and ids)
 	public static int calculateOptimalCCT(ArrayList<ArrayList<Job>> schedules) {
-		//LinkedHashSet<Integer> ingressesSet = new LinkedHashSet<>();
-		//LinkedHashSet<Integer> idsSet = new LinkedHashSet<>();
-		//ArrayList<String> egressesList = new ArrayList<>();
+		HashMap<Integer, Integer> ingressesDict = new HashMap<>();
+		HashMap<Integer, Integer> idsDict = new HashMap<>();
 		int ingressTimes[] = new int[schedules.size()];
 		int egressTimes[] = new int[schedules.size()];
 		int schedulesIndex[] = new int[schedules.size()];
 		int ingressCount[] = new int[schedules.size()];
 		int egressIngressCount[][] = new int[schedules.size()][schedules.size()];
-		int numCoflowsMinusOne = 0;
+		int globalIngressIndex = 0;
+		int globalIdIndex = 0;
 		for (int i = 0; i < schedules.size(); i++) {
 			ingressTimes[i] = 0;
 			egressTimes[i] = 0;
@@ -163,13 +163,22 @@ public class BruteForceSolver {
             //egressesList.add(schedules.get(i).get(0).egress);
             //reindex all of the ingresses and ids for convenient indexing, remove epsilons for emphasis
 			for (Job job : schedules.get(i)) {
-				job.ingress -= 1;
-				job.id -= 1;
+				int ingressIndex = ingressesDict.getOrDefault(job.ingress, -1);
+				if (ingressIndex == -1) {
+					ingressesDict.put(job.ingress, globalIngressIndex);
+					ingressIndex = globalIngressIndex;
+					globalIngressIndex++;
+				}
+				job.ingress = ingressIndex;
+				int idIndex = idsDict.getOrDefault(job.id, -1);
+				if (idIndex == -1) {
+					idsDict.put(job.id, globalIdIndex);
+					idIndex = globalIdIndex;
+					globalIdIndex++;
+				}
+				job.id = idIndex;
 				job.epsilon = 0;
-				egressIngressCount[i][job.ingress]++;
-				numCoflowsMinusOne = Math.max(numCoflowsMinusOne, job.id);
-                //ingressesSet.add(job.ingress);
-                //idsSet.add(job.id);
+				egressIngressCount[i][ingressIndex]++;
 			}
 		}
 		//will be used for shortcut if only one egress needs a particular ingress
@@ -182,7 +191,7 @@ public class BruteForceSolver {
 		//Integer ingresses[] = ingressesSet.toArray(new Integer[0]);
         //Integer ids[] = idsSet.toArray(new Integer[0]);
         //String egresses[] = egressesList.toArray(new String[0]);
-		int coflowCompletionTime[] = new int[numCoflowsMinusOne+1];
+		int coflowCompletionTime[] = new int[globalIdIndex];
 		for (int i = 0; i < coflowCompletionTime.length; i++) {
 			coflowCompletionTime[i] = 0;
 		}
@@ -194,8 +203,8 @@ public class BruteForceSolver {
 		int wCCT = getSchedulePermutations(new ArrayList<ArrayList<Job>>(), jobPermutations, 0, coflowCompletionTime,
 				ingressTimes, egressTimes, schedulesIndex, ingressCount, egressIngressCount);
 		System.out.println("optimal wCCT: " + wCCT);
-		System.out.println("coflows = " + (numCoflowsMinusOne+1));
-		System.out.println("average wCCT = " + ((float) wCCT) / (numCoflowsMinusOne+1));
+		System.out.println("coflows = " + globalIdIndex);
+		System.out.println("average wCCT = " + ((float) wCCT) / globalIdIndex);
 		return wCCT;
 	}
 
