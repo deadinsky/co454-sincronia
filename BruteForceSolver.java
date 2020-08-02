@@ -66,8 +66,12 @@ public class BruteForceSolver {
 								canTakeNextJob = false;
 								break;
 							}
-							timeOffset += Math.max(ingressTimes[otherIngress] - (egressTimes[i] + timeOffset), 0)
-									+ otherJob.timeUnits;
+							int newTimeOffset = 0;
+							newTimeOffset = Math.max(ingressTimes[otherIngress] -
+									(egressTimes[i] + timeOffset), newTimeOffset);
+							newTimeOffset = Math.max(otherJob.releaseTime -
+									(egressTimes[i] + timeOffset), newTimeOffset);
+							timeOffset += newTimeOffset + otherJob.timeUnits;
 							indexOffset++;
 						}
 					}
