@@ -23,10 +23,12 @@ public class LocalSincroniaProcessor {
 		LinkedHashSet<Integer> ids = new LinkedHashSet<Integer>();
 		LinkedHashSet<String> egresses = new LinkedHashSet<String>();
 		for (int i = 0; i < schedules.size(); i++) {
-			ingresses.add(schedules.get(i).get(0).ingress);
-			for (Job job : schedules.get(i)) {
-				ids.add(job.id);
-				egresses.add(job.egress);
+			if (schedules.get(i).size() > 0) {
+				ingresses.add(schedules.get(i).get(0).ingress);
+				for (Job job : schedules.get(i)) {
+					ids.add(job.id);
+					egresses.add(job.egress);
+				}
 			}
 		}
 		ArrayList<ArrayList<Job>> beNodeSchedules = CalculateSchedules.calculateSchedules(schedules,

@@ -236,24 +236,29 @@ public class CalculateSchedules {
             boolean jobFound = false;
             //find a job from the next available ingress that has an open egress with a released job
             for (int i = 0; !jobFound && i < ingressSchedule.size(); i++) {
-                int flowIndex = idDict.get(ingressSchedule.get(i).id);
-                //record the next available egress, just in case none are currently available
+                Job ingressJob = ingressSchedule.get(i);
+                int flowIndex = idDict.get(ingressJob.id);
+                //record the next release time, just in case no job is released
                 if (releaseTimes[flowIndex].isGreater(ingressTimes[ingressIndex])) {
-                    if (nextIngressCheck.isGreater(releaseTimes[idDict.get(ingressSchedule.get(i).id)])) {
-                        nextIngressCheck = releaseTimes[idDict.get(ingressSchedule.get(i).id)];
+                    if (nextIngressCheck.isGreater(releaseTimes[idDict.get(ingressJob.id)])) {
+                        nextIngressCheck = releaseTimes[idDict.get(ingressJob.id)];
                     }
                 }
-                else if (egressTimes[egressDict.get(ingressSchedule.get(i).egress)].isGreater(ingressTimes[ingressIndex])) {
-                    if (nextIngressCheck.isGreater(egressTimes[egressDict.get(ingressSchedule.get(i).egress)])) {
-                        nextIngressCheck = releaseTimes[idDict.get(ingressSchedule.get(i).id)];
+                //record the next available egress, just in case none are currently available
+                else if (egressTimes[egressDict.get(ingressJob.egress)].isGreater(ingressTimes[ingressIndex])) {
+                    if (nextIngressCheck.isGreater(egressTimes[egressDict.get(ingressJob.egress)])) {
+                        nextIngressCheck = egressTimes[egressDict.get(ingressJob.egress)];
                     }
                 }
                 else {
                     //ingress and egress will now be free at the same time
+                    log.info("BENode " + ingressJob.egress + " (t = " +
+                            ingressTimes[ingressIndex].numInt + " e" + ingressTimes[ingressIndex].numEps + "): Job " +
+                            ingressJob.id + " processed in " + ingressJob.timeUnits + " e" + ingressJob.epsilon);
                     ingressTimes[ingressIndex] = EpsilonFraction.addFractions(ingressTimes[ingressIndex],
-                            new EpsilonFraction(ingressSchedule.get(i).timeUnits, ingressSchedule.get(i).epsilon));
-                    egressTimes[egressDict.get(ingressSchedule.get(i).egress)] = ingressTimes[ingressIndex];
-                    beNodeSchedules.get(egressDict.get(ingressSchedule.get(i).egress)).add(ingressSchedule.get(i));
+                            new EpsilonFraction(ingressJob.timeUnits, ingressJob.epsilon));
+                    egressTimes[egressDict.get(ingressJob.egress)] = ingressTimes[ingressIndex];
+                    beNodeSchedules.get(egressDict.get(ingressJob.egress)).add(ingressJob);
                     if (ingressTimes[ingressIndex].isGreater(finishTimes[flowIndex])) {
                         finishTimes[flowIndex] = ingressTimes[ingressIndex];
                     }
@@ -302,10 +307,13 @@ public class CalculateSchedules {
         int currentTime = 0;
         int currentTimeEps = 0;
         for (Job job : schedule) {
-            log.info("BENode " + job.egress + " (t = " + currentTime + " e" + currentTimeEps + "): Job " +
-                    job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
+            //log.info("BENode " + job.egress + " (t = " + currentTime + " e" + currentTimeEps + "): Job " +
+            //        job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
             currentTime += job.timeUnits;
             currentTimeEps += job.epsilon;
+            //printing is done during calculation
+            log.info("BENode " + job.egress + " has received its schedule.");
+            return;
         }
     }
 

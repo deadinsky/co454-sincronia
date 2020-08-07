@@ -47,8 +47,11 @@ public class Client {
 					TProtocol protocol = new TBinaryProtocol(transport);
 					SincroniaService.Client client = new SincroniaService.Client(protocol);
 					transport.open();
-
-					client.sendJobs(schedules.get(finalI), schedules.get(finalI).get(0).ingress);
+					if (schedules.get(finalI).size() > 0) {
+						client.sendJobs(schedules.get(finalI), schedules.get(finalI).get(0).ingress);
+					} else {
+						client.sendJobs(schedules.get(finalI), -1);
+					}
 					transport.close();
 				} catch (IllegalArgument illegalArgument) {
 					illegalArgument.printStackTrace();
