@@ -7,7 +7,10 @@ public class Job {
     public int releaseTime;
     public int timeUnits;
     public int epsilon;
-    Job (int _id, int _ingress, String _egress, int _weight, int _releaseTime, int _timeUnits, int _epsilon) {
+    public int executionTime;
+    public int executionEps;
+    Job (int _id, int _ingress, String _egress, int _weight, int _releaseTime,
+         int _timeUnits, int _epsilon, int _executionTime, int _executionEps) {
         id = _id;
         ingress = _ingress;
         egress = _egress;
@@ -15,5 +18,8 @@ public class Job {
         releaseTime = _releaseTime;
         timeUnits = _timeUnits;
         epsilon = _epsilon;
+        //should only be set for backend purposes
+        executionTime = _executionTime;
+        executionEps = _executionEps;
     }
 }

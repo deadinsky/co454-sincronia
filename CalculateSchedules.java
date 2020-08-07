@@ -68,7 +68,7 @@ public class CalculateSchedules {
                         timeUnits = Integer.valueOf(currentLine[i+2]);
                     }
                     schedules.get(gressIndex).add(
-                            new Job(coflowId, ingress, egress, 1, releaseTime, timeUnits, epsilon));
+                            new Job(coflowId, ingress, egress, 1, releaseTime, timeUnits, epsilon, 0, 0));
                 }
             }
         } catch (FileNotFoundException e) {
@@ -252,10 +252,10 @@ public class CalculateSchedules {
                     }
                 }
                 else {
+                    //modify these for backend output
+                    ingressJob.executionTime = ingressTimes[ingressIndex].numInt;
+                    ingressJob.executionEps = ingressTimes[ingressIndex].numEps;
                     //ingress and egress will now be free at the same time
-                    log.info("BENode " + ingressJob.egress + " (t = " +
-                            ingressTimes[ingressIndex].numInt + " e" + ingressTimes[ingressIndex].numEps + "): Job " +
-                            ingressJob.id + " processed in " + ingressJob.timeUnits + " e" + ingressJob.epsilon);
                     ingressTimes[ingressIndex] = EpsilonFraction.addFractions(ingressTimes[ingressIndex],
                             new EpsilonFraction(ingressJob.timeUnits, ingressJob.epsilon));
                     egressTimes[egressDict.get(ingressJob.egress)] = ingressTimes[ingressIndex];
@@ -309,16 +309,9 @@ public class CalculateSchedules {
     }
 
     public static void printSchedule(List<Job> schedule) {
-        int currentTime = 0;
-        int currentTimeEps = 0;
         for (Job job : schedule) {
-            //log.info("BENode " + job.egress + " (t = " + currentTime + " e" + currentTimeEps + "): Job " +
-            //        job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
-            currentTime += job.timeUnits;
-            currentTimeEps += job.epsilon;
-            //printing is done during calculation
-            log.info("BENode " + job.egress + " has received its schedule.");
-            return;
+            log.info("BENode " + job.egress + " (t = " + job.executionTime + " e" + job.executionEps + "): Job " +
+                    job.id + " processed in " + job.timeUnits + " e" + job.epsilon);
         }
     }
 

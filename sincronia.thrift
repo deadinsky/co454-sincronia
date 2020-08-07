@@ -5,7 +5,9 @@ struct Job {
   4: i32 weight,
   5: i32 releaseTime,
   6: i32 timeUnits,
-  7: i32 epsilon
+  7: i32 epsilon,
+  8: i32 executionTime,
+  9: i32 executionEps
 }
 
 exception IllegalArgument {
