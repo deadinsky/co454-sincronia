@@ -158,7 +158,9 @@ public class BruteForceSolver {
     		//need to copy all of the int arrays so modification does not effect reusing them for other schedules
 			int egressTimes[] = new int[schedulesSize];
 			for (int i = 0; i < schedulesSize; i++) {
-				egressTimes[i] = schedule.get(i).get(0).releaseTime;
+				if (schedule.get(i).size() > 0) {
+					egressTimes[i] = schedule.get(i).get(0).releaseTime;
+				}
 			}
     		wCCT = calculateCCTFromJobOrdering(schedule, schedulesSize, wCCT, weights,
 					coflowCompletionTime.clone(), ingressTimes.clone(), egressTimes,
