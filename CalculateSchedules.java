@@ -298,13 +298,15 @@ public class CalculateSchedules {
         //calculate wCCT
         int wCCTInt = 0;
         int wCCTEps = 0;
+        float awCCT = 0;
         for (int i = 0; i < localIds.length; i++) {
             wCCTInt += finishTimes[i].numInt * originalWeights[i];
             wCCTEps += finishTimes[i].numEps * originalWeights[i];
+            awCCT += ((double) finishTimes[i].numInt / localIds.length) * originalWeights[i];
         }
         System.out.println("wCCT = " + wCCTInt + (wCCTEps == 0 ? "" : (wCCTEps < 0 ? "" : "+") + wCCTEps + "e"));
         System.out.println("coflows = " + localIds.length);
-        System.out.println("average wCCT = " + ((float) wCCTInt) / localIds.length);
+        System.out.println("average wCCT = " + awCCT);
         return beNodeSchedules;
     }
 
