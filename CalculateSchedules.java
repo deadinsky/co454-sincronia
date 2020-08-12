@@ -298,7 +298,7 @@ public class CalculateSchedules {
         //calculate wCCT
         int wCCTInt = 0;
         int wCCTEps = 0;
-        float awCCT = 0;
+        double awCCT = 0;
         for (int i = 0; i < localIds.length; i++) {
             wCCTInt += finishTimes[i].numInt * originalWeights[i];
             wCCTEps += finishTimes[i].numEps * originalWeights[i];
