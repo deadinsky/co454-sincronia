@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
-public class BruteForceSolver {
+public class BruteForceSolverIterative {
 
 	public static long calculateCCT(long coflowCompletionTime[], int[] weights) {
 		long wCCT = 0;
@@ -118,7 +118,7 @@ public class BruteForceSolver {
 			//may save time if we end schedules with super large wCCTs early
 			//note that the wCCT of this schedule must be greater or equal to
 			//I tested it empirically on the toy schedule and it seemed to save time
-			long potentialWCCT = calculateCCT(coflowCompletionTime, weights);
+			long potentialWCCT = BruteForceSolverIterative.calculateCCT(coflowCompletionTime, weights);
 			if (bestWCCT != -1 && potentialWCCT >= bestWCCT) {
 				continue;
 			}
@@ -180,13 +180,15 @@ public class BruteForceSolver {
 			iteratorArray[i] = jobPermutations.get(i).iterator();
 			if (iteratorArray[i].hasNext()) {
 				schedule.set(i, new ArrayList<Job>(iteratorArray[i].next()));
-				egressTimes[i] = schedule.get(i).get(0).releaseTime;
+				if (schedule.get(i).size() > 0) {
+					egressTimes[i] = schedule.get(i).get(0).releaseTime;
+				}
 			}
 		}
 		boolean isFinished = false;
 		int firstIndexToCheck = schedulesSize - 1;
 		while (!isFinished) {
-			long newWCCT = calculateCCTFromJobOrdering(schedule, schedulesSize, wCCT, weights,
+			long newWCCT = BruteForceSolverIterative.calculateCCTFromJobOrdering(schedule, schedulesSize, wCCT, weights,
 					coflowCompletionTime.clone(), ingressTimes.clone(), egressTimes.clone(),
 					schedulesIndex.clone(), ingressCount.clone(),
 					Arrays.stream(egressIngressCount).map(int[]::clone).toArray(int[][]::new));
@@ -278,7 +280,7 @@ public class BruteForceSolver {
 			jobPermutations.add(permutations);
 			schedule.add(null);
 		}
-		long wCCT = getSchedulePermutations(schedule, schedulesSize, -1,
+		long wCCT = BruteForceSolverIterative.getSchedulePermutations(schedule, schedulesSize, -1,
 				weights.stream().mapToInt(i->i).toArray(), jobPermutations,
 				coflowCompletionTime, ingressTimes, schedulesIndex, ingressCount, egressIngressCount);
 		System.out.println("optimal wCCT: " + wCCT);
@@ -295,7 +297,7 @@ public class BruteForceSolver {
 		BasicConfigurator.configure();
 
 		ArrayList<ArrayList<Job>> schedules = CalculateSchedules.parseSchedules(args[0], false);
-		long wCCT = BruteForceSolver.calculateOptimalCCT(schedules);
+		long wCCT = BruteForceSolverIterative.calculateOptimalCCT(schedules);
 		return;
     }
 }

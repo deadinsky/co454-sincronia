@@ -27,9 +27,9 @@ rm -fr gen-java
 echo --- Compiling Java
 $JAVA_CC -version
 mv LocalJobClass/Job.java Job.java
-$JAVA_CC BruteForceSolver.java CalculateSchedules.java Job.java -cp .:gen-java/:"lib/*"
+$JAVA_CC BruteForceSolverRecursive.java CalculateSchedules.java Job.java -cp .:gen-java/:"lib/*"
 mv Job.java LocalJobClass/
 
 echo --- Done, now run your code.
 echo     Examples:
-echo $JAVA '-cp .:gen-java/:"lib/*" BruteForceSolver schedule.txt'
+echo $JAVA '-cp .:gen-java/:"lib/*" BruteForceSolverRecursive schedule.txt'
