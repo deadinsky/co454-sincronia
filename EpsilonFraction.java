@@ -1,29 +1,29 @@
 public class EpsilonFraction {
-    int numInt = 0;
-    int numEps = 0;
-    int denInt = 1;
-    int denEps = 0; // assumption; one of denEps and denInt is non-zero
+    long numInt = 0;
+    long numEps = 0;
+    long denInt = 1;
+    long denEps = 0; // assumption; one of denEps and denInt is non-zero
 
     public final static EpsilonFraction one = new EpsilonFraction(1);
     public final static EpsilonFraction zero = new EpsilonFraction(0);
 
-    EpsilonFraction(int lNumInt) {
+    EpsilonFraction(long lNumInt) {
         numInt = lNumInt;
     }
 
-    EpsilonFraction(int lNumInt, int lNumEps) {
+    EpsilonFraction(long lNumInt, long lNumEps) {
         numInt = lNumInt;
         numEps = lNumEps;
     }
 
-    EpsilonFraction(int lNumInt, int lNumEps, int lDenInt) {
+    EpsilonFraction(long lNumInt, long lNumEps, long lDenInt) {
         numInt = lNumInt;
         numEps = lNumEps;
         denInt = lDenInt;
         this.reduceFraction();
     }
 
-    EpsilonFraction(int lNumInt, int lNumEps, int lDenInt, int lDenEps) {
+    EpsilonFraction(long lNumInt, long lNumEps, long lDenInt, long lDenEps) {
         numInt = lNumInt;
         numEps = lNumEps;
         denInt = lDenInt;
@@ -31,7 +31,7 @@ public class EpsilonFraction {
         this.reduceFraction();
     }
 
-    public int gcd(int a, int b) { return b==0 ? a : gcd(b, a%b); }
+    public long gcd(long a, long b) { return b==0 ? a : gcd(b, a%b); }
 
     public void reduceFraction() {
         if (numInt == 0 && numEps == 0) {
@@ -45,7 +45,7 @@ public class EpsilonFraction {
             denInt *= 1;
             denEps *= 1;
         }
-        int gcd;
+        long gcd;
         if (numEps == 0 && denEps == 0 && numInt != 0) {
             gcd = gcd(numInt, denInt);
             numInt /= gcd;
@@ -65,7 +65,7 @@ public class EpsilonFraction {
             denEps = 0;
             return;
         }
-        int numGcd = (numInt == 0 ? numEps : gcd(numInt, numEps));
+        long numGcd = (numInt == 0 ? numEps : gcd(numInt, numEps));
         if (denEps == 0) {
             gcd = gcd(numGcd, denInt);
             numInt /= gcd;
@@ -80,7 +80,7 @@ public class EpsilonFraction {
             denEps /= gcd;
             return;
         }
-        int denGcd = gcd(denInt, denEps);
+        long denGcd = gcd(denInt, denEps);
         if (numInt / numGcd == denInt / denGcd && numEps / numGcd == denEps / denGcd) {
             gcd = gcd(numGcd, denGcd);
             numInt = numGcd / gcd;
@@ -92,12 +92,12 @@ public class EpsilonFraction {
         return;
     }
 
-    public static EpsilonFraction addFractions(int x, EpsilonFraction y) {
+    public static EpsilonFraction addFractions(long x, EpsilonFraction y) {
         return new EpsilonFraction(x * y.denInt + y.numInt, x * y.denEps + y.numEps,
                 y.denInt, y.denEps);
     }
 
-    public static EpsilonFraction addFractions(EpsilonFraction x, int y) {
+    public static EpsilonFraction addFractions(EpsilonFraction x, long y) {
         return new EpsilonFraction(x.numInt + y * x.denInt, x.numEps + y * x.denEps,
                 x.denInt, x.denEps);
     }
@@ -116,12 +116,12 @@ public class EpsilonFraction {
                 x.denInt * y.denInt, x.denInt * y.denEps + y.denInt * x.denEps); //e^2 is ignored
     }
 
-    public static EpsilonFraction subtractFractions(int x, EpsilonFraction y) {
+    public static EpsilonFraction subtractFractions(long x, EpsilonFraction y) {
         return new EpsilonFraction(x * y.denInt - y.numInt, x * y.denEps - y.numEps,
                 y.denInt, y.denEps);
     }
 
-    public static EpsilonFraction subtractFractions(EpsilonFraction x, int y) {
+    public static EpsilonFraction subtractFractions(EpsilonFraction x, long y) {
         return new EpsilonFraction(x.numInt - y * x.denInt, x.numEps - y * x.denEps,
                 x.denInt, x.denEps);
     }
@@ -140,11 +140,11 @@ public class EpsilonFraction {
                 x.denInt * y.denInt, x.denInt * y.denEps + y.denInt * x.denEps); //e^2 is ignored
     }
 
-    public static EpsilonFraction multiplyFractions(int x, EpsilonFraction y) {
+    public static EpsilonFraction multiplyFractions(long x, EpsilonFraction y) {
         return new EpsilonFraction(x * y.numInt, x * y.numEps, y.denInt, y.denEps);
     }
 
-    public static EpsilonFraction multiplyFractions(EpsilonFraction x, int y) {
+    public static EpsilonFraction multiplyFractions(EpsilonFraction x, long y) {
         return new EpsilonFraction(x.numInt * y, x.numEps * y, x.denInt, x.denEps);
     }
 
@@ -153,11 +153,11 @@ public class EpsilonFraction {
                 x.denInt * y.denInt, x.denInt * y.denEps + y.denInt * x.denEps); //e^2 is ignored
     }
 
-    public static EpsilonFraction divideFractions(int x, EpsilonFraction y) {
+    public static EpsilonFraction divideFractions(long x, EpsilonFraction y) {
         return new EpsilonFraction(x * y.denInt, x * y.denEps, y.numInt, y.numEps);
     }
 
-    public static EpsilonFraction divideFractions(EpsilonFraction x, int y) {
+    public static EpsilonFraction divideFractions(EpsilonFraction x, long y) {
         return new EpsilonFraction(x.numInt, x.numEps, x.denInt * y, x.denEps * y);
     }
 
@@ -174,7 +174,7 @@ public class EpsilonFraction {
                 this.denInt == x.denInt && this.denEps == x.denEps);
     }
 
-    public boolean isEqual(int x) {
+    public boolean isEqual(long x) {
         return (this.numInt == x && this.numEps == 0 && this.denInt == 1 && this.denEps == 0);
     }
 

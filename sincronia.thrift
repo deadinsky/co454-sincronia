@@ -6,8 +6,8 @@ struct Job {
   5: i32 releaseTime,
   6: i32 timeUnits,
   7: i32 epsilon,
-  8: i32 executionTime,
-  9: i32 executionEps
+  8: i64 executionTime,
+  9: i64 executionEps
 }
 
 exception IllegalArgument {
