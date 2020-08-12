@@ -26,129 +26,155 @@ public class BruteForceSolver {
 	//assumption: each coflow flow has a unique ingress-egress pair
     public static long calculateCCTFromJobOrdering(ArrayList<ArrayList<Job>> schedules,
 												  int schedulesSize, long bestWCCT, int[] weights,
-												  long coflowCompletionTime[], int[] ingressTimes, int[] egressTimes,
+												  long coflowCompletionTime[], long[] ingressTimes, long[] egressTimes,
 												  int[] schedulesIndex, int[] ingressCount, int[][] egressIngressCount) {
-        long wCCT = -1;
-        int breakIndex = -1;
-        int i = 0;
-        //we want to progress the schedule in conflict-free jobs as much as possible before dictating egress priority
-        while (i != breakIndex) {
-			//breakIndex makes sure no changes are made for one full iteration before moving to the next part
-			if (breakIndex == -1) {
-				breakIndex = i;
-			}
-			//egress isn't receiving any other jobs
-			if (schedulesIndex[i] == schedules.get(i).size()) {
-				i = (i + 1) % schedulesSize;
-				continue;
-			}
-			Job candidateJob = schedules.get(i).get(schedulesIndex[i]);
-			int candidateIngress = candidateJob.ingress;
-			int newIngressTime = Math.max(ingressTimes[candidateIngress], egressTimes[i]) + candidateJob.timeUnits;
-			int newEgressTime = Math.max(newIngressTime, (schedulesIndex[i] == schedules.get(i).size() - 1 ?
-					0 : schedules.get(i).get(schedulesIndex[i] + 1).releaseTime));
-			//cheat 1: if an egress has an ingress next with no other egresses needing that ingress
-			//then it can take it for free
-			boolean canTakeNextJob = (egressIngressCount[i][candidateIngress] == ingressCount[candidateIngress]);
-			//cheat 2: if an egress' job is shorter or equal to the next time any egress could theoretically
-			//need that ingress, then it takes it for free
-			if (!canTakeNextJob) {
-				canTakeNextJob = true;
-				for (int j = 0; j < schedulesSize && canTakeNextJob; j++) {
-					ArrayList<Job> otherSchedule = schedules.get(j);
-					int scheduleSize = otherSchedule.size();
-					//egress isn't receiving any other jobs
-					if (j == i || scheduleSize == schedulesIndex[j]) {
-						continue;
-					}
-					int timeOffset = 0;
-					int indexOffset = 0;
-					while (egressTimes[i] + timeOffset < newEgressTime && scheduleSize >
-							schedulesIndex[j] + indexOffset) {
-						Job otherJob = otherSchedule.get(schedulesIndex[j] + indexOffset);
-						int otherIngress = otherJob.ingress;
-						if (candidateIngress == otherIngress) {
-							canTakeNextJob = false;
-							break;
+        Stack<long []> coflowCompletionTimeStack = new Stack<>();
+		Stack<long []> ingressTimesStack = new Stack<>();
+		Stack<long []> egressTimesStack = new Stack<>();
+		Stack<int []> schedulesIndexStack = new Stack<>();
+		Stack<int []> ingressCountStack = new Stack<>();
+		Stack<int [][]> egressIngressCountStack = new Stack<>();
+		//initialization of stack
+		coflowCompletionTimeStack.push(coflowCompletionTime);
+		ingressTimesStack.push(ingressTimes);
+		egressTimesStack.push(egressTimes);
+		schedulesIndexStack.push(schedulesIndex);
+		ingressCountStack.push(ingressCount);
+		egressIngressCountStack.push(egressIngressCount);
+		while (!coflowCompletionTimeStack.empty()) {
+			//get the next schedule which needs to progress
+			coflowCompletionTime = coflowCompletionTimeStack.pop();
+			ingressTimes = ingressTimesStack.pop();
+			egressTimes = egressTimesStack.pop();
+			schedulesIndex = schedulesIndexStack.pop();
+			ingressCount = ingressCountStack.pop();
+			egressIngressCount = egressIngressCountStack.pop();
+			int breakIndex = -1;
+			int i = 0;
+			//we want to progress the schedule in conflict-free jobs as much as possible before dictating egress priority
+			while (i != breakIndex) {
+				//breakIndex makes sure no changes are made for one full iteration before moving to the next part
+				if (breakIndex == -1) {
+					breakIndex = i;
+				}
+				//egress isn't receiving any other jobs
+				if (schedulesIndex[i] == schedules.get(i).size()) {
+					i = (i + 1) % schedulesSize;
+					continue;
+				}
+				Job candidateJob = schedules.get(i).get(schedulesIndex[i]);
+				int candidateIngress = candidateJob.ingress;
+				long newIngressTime = Math.max(ingressTimes[candidateIngress], egressTimes[i]) + candidateJob.timeUnits;
+				long newEgressTime = Math.max(newIngressTime, (schedulesIndex[i] == schedules.get(i).size() - 1 ?
+						0 : schedules.get(i).get(schedulesIndex[i] + 1).releaseTime));
+				//cheat 1: if an egress has an ingress next with no other egresses needing that ingress
+				//then it can take it for free
+				boolean canTakeNextJob = (egressIngressCount[i][candidateIngress] == ingressCount[candidateIngress]);
+				//cheat 2: if an egress' job is shorter or equal to the next time any egress could theoretically
+				//need that ingress, then it takes it for free
+				if (!canTakeNextJob) {
+					canTakeNextJob = true;
+					for (int j = 0; j < schedulesSize && canTakeNextJob; j++) {
+						ArrayList<Job> otherSchedule = schedules.get(j);
+						int scheduleSize = otherSchedule.size();
+						//egress isn't receiving any other jobs
+						if (j == i || scheduleSize == schedulesIndex[j]) {
+							continue;
 						}
-						int newTimeOffset = 0;
-						//ingress needs to be free and job must be released
-						newTimeOffset = Math.max(ingressTimes[otherIngress] -
-								(egressTimes[i] + timeOffset), newTimeOffset);
-						newTimeOffset = Math.max(otherJob.releaseTime -
-								(egressTimes[i] + timeOffset), newTimeOffset);
-						timeOffset += newTimeOffset + otherJob.timeUnits;
-						indexOffset++;
+						long timeOffset = 0;
+						int indexOffset = 0;
+						while (egressTimes[i] + timeOffset < newEgressTime && scheduleSize >
+								schedulesIndex[j] + indexOffset) {
+							Job otherJob = otherSchedule.get(schedulesIndex[j] + indexOffset);
+							int otherIngress = otherJob.ingress;
+							if (candidateIngress == otherIngress) {
+								canTakeNextJob = false;
+								break;
+							}
+							long newTimeOffset = 0;
+							//ingress needs to be free and job must be released
+							newTimeOffset = Math.max(ingressTimes[otherIngress] -
+									(egressTimes[i] + timeOffset), newTimeOffset);
+							newTimeOffset = Math.max(otherJob.releaseTime -
+									(egressTimes[i] + timeOffset), newTimeOffset);
+							timeOffset += newTimeOffset + otherJob.timeUnits;
+							indexOffset++;
+						}
 					}
 				}
+				if (canTakeNextJob) {
+					if (coflowCompletionTime[candidateJob.id] < newIngressTime) {
+						coflowCompletionTime[candidateJob.id] = newIngressTime;
+					}
+					ingressCount[candidateIngress]--;
+					egressIngressCount[i][candidateIngress]--;
+					ingressTimes[candidateIngress] = newIngressTime;
+					egressTimes[i] = newEgressTime;
+					schedulesIndex[i]++;
+					breakIndex = -1;
+				}
+				i = (i + 1) % schedulesSize;
 			}
-			if (canTakeNextJob) {
-			    if (coflowCompletionTime[candidateJob.id] < newIngressTime) {
-			        coflowCompletionTime[candidateJob.id] = newIngressTime;
-                }
-				ingressCount[candidateIngress]--;
-				egressIngressCount[i][candidateIngress]--;
-				ingressTimes[candidateIngress] = newIngressTime;
-				egressTimes[i] = newEgressTime;
-				schedulesIndex[i]++;
-				breakIndex = -1;
-			}
-			i = (i + 1) % schedulesSize;
-		}
-        //may save time if we end schedules with super large wCCTs early
-		//note that the wCCT of this schedule must be greater or equal to
-		//I tested it empirically on the toy schedule and it seemed to save time
-		long potentialWCCT = calculateCCT(coflowCompletionTime, weights);
-        if (bestWCCT != -1 && potentialWCCT >= bestWCCT) {
-        	return potentialWCCT;
-		}
-        //we went through all of the cheats, now test each variation depending on which egress goes next
-        for (i = 0; i < schedulesSize; i++) {
-			//egress isn't receiving any other jobs
-			if (schedulesIndex[i] == schedules.get(i).size()) {
+			//may save time if we end schedules with super large wCCTs early
+			//note that the wCCT of this schedule must be greater or equal to
+			//I tested it empirically on the toy schedule and it seemed to save time
+			long potentialWCCT = calculateCCT(coflowCompletionTime, weights);
+			if (bestWCCT != -1 && potentialWCCT >= bestWCCT) {
 				continue;
 			}
-			Job candidateJob = schedules.get(i).get(schedulesIndex[i]);
-			int candidateIngress = candidateJob.ingress;
-			int newIngressTime = Math.max(ingressTimes[candidateIngress], egressTimes[i]) + candidateJob.timeUnits;
-			int newEgressTime = Math.max(newIngressTime, (schedulesIndex[i] == schedules.get(i).size() - 1 ?
-					0 : schedules.get(i).get(schedulesIndex[i] + 1).releaseTime));
-			//need to clone everything
-			long newCoflowCompletionTime[] = coflowCompletionTime.clone();
-			int newIngressTimes[] = ingressTimes.clone();
-			int newEgressTimes[] = egressTimes.clone();
-			int newSchedulesIndex[] = schedulesIndex.clone();
-			int newIngressCount[] = ingressCount.clone();
-			int newEgressIngressCount[][] = Arrays.stream(egressIngressCount).map(int[]::clone).toArray(int[][]::new);
-			newIngressCount[candidateIngress]--;
-			newEgressIngressCount[i][candidateIngress]--;
-			newCoflowCompletionTime[candidateJob.id] = newIngressTime;
-			newIngressTimes[candidateIngress] = newIngressTime;
-			newEgressTimes[i] = newEgressTime;
-			newSchedulesIndex[i]++;
-			long newWCCT = calculateCCTFromJobOrdering(schedules,
-					schedulesSize, bestWCCT, weights, newCoflowCompletionTime, newIngressTimes,
-					newEgressTimes, newSchedulesIndex, newIngressCount, newEgressIngressCount);
-			if (wCCT == -1 || (newWCCT > -1 && newWCCT < wCCT)) {
-				wCCT = newWCCT;
+			//we went through all of the cheats, now test each variation depending on which egress goes next
+			boolean isScheduleFinished = true;
+			for (i = 0; i < schedulesSize; i++) {
+				//egress isn't receiving any other jobs
+				if (schedulesIndex[i] == schedules.get(i).size()) {
+					continue;
+				}
+				isScheduleFinished = false;
+				Job candidateJob = schedules.get(i).get(schedulesIndex[i]);
+				int candidateIngress = candidateJob.ingress;
+				long newIngressTime = Math.max(ingressTimes[candidateIngress], egressTimes[i]) + candidateJob.timeUnits;
+				long newEgressTime = Math.max(newIngressTime, (schedulesIndex[i] == schedules.get(i).size() - 1 ?
+						0 : schedules.get(i).get(schedulesIndex[i] + 1).releaseTime));
+				//need to clone everything
+				long newCoflowCompletionTime[] = coflowCompletionTime.clone();
+				long newIngressTimes[] = ingressTimes.clone();
+				long newEgressTimes[] = egressTimes.clone();
+				int newSchedulesIndex[] = schedulesIndex.clone();
+				int newIngressCount[] = ingressCount.clone();
+				int newEgressIngressCount[][] = Arrays.stream(egressIngressCount).map(int[]::clone).toArray(int[][]::new);
+				newIngressCount[candidateIngress]--;
+				newEgressIngressCount[i][candidateIngress]--;
+				if (newCoflowCompletionTime[candidateJob.id] < newIngressTime) {
+					newCoflowCompletionTime[candidateJob.id] = newIngressTime;
+				}
+				newIngressTimes[candidateIngress] = newIngressTime;
+				newEgressTimes[i] = newEgressTime;
+				newSchedulesIndex[i]++;
+				coflowCompletionTimeStack.push(newCoflowCompletionTime);
+				ingressTimesStack.push(newIngressTimes);
+				egressTimesStack.push(newEgressTimes);
+				schedulesIndexStack.push(newSchedulesIndex);
+				ingressCountStack.push(newIngressCount);
+				egressIngressCountStack.push(newEgressIngressCount);
+			}
+			if (isScheduleFinished) {
+				if (bestWCCT == -1 || (potentialWCCT > -1 && potentialWCCT < bestWCCT)) {
+					bestWCCT = potentialWCCT;
+				}
 			}
 		}
-        //means schedule iteration is over
-        if (wCCT == -1 && potentialWCCT > -1) {
-        	return potentialWCCT;
-		}
-        return wCCT;
+        return bestWCCT;
     }
 	public static long getSchedulePermutations(ArrayList<ArrayList<Job>> schedule,
 											  int schedulesSize, long bestWCCT, int[] weights,
 											  ArrayList<Collection<List<Job>>> jobPermutations,
-											  long[] coflowCompletionTime, int[] ingressTimes,
+											  long[] coflowCompletionTime, long[] ingressTimes,
 											  int[] schedulesIndex, int[] ingressCount, int[][] egressIngressCount) {
 		//changed to be iterative and not recursive
 		long wCCT = bestWCCT;
 		long permSize[] = new long[schedulesSize];
 		Iterator<List<Job>> iteratorArray[] = new Iterator[schedulesSize];
-		int egressTimes[] = new int[schedulesSize];
+		long egressTimes[] = new long[schedulesSize];
 		for (int i = 0; i < schedulesSize; i++) {
 			permSize[i] = jobPermutations.get(i).size();
 			iteratorArray[i] = jobPermutations.get(i).iterator();
@@ -197,7 +223,7 @@ public class BruteForceSolver {
 		HashMap<Integer, Integer> idsDict = new HashMap<>();
 		ArrayList<Integer> weights = new ArrayList<>();
 		int schedulesSize = schedules.size();
-		int ingressTimes[] = new int[schedulesSize];
+		long ingressTimes[] = new long[schedulesSize];
 		int schedulesIndex[] = new int[schedulesSize];
 		int ingressCount[] = new int[schedulesSize];
 		int egressIngressCount[][] = new int[schedulesSize][schedulesSize];
