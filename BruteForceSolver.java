@@ -83,10 +83,11 @@ public class BruteForceSolver {
 				}
 			}
 			if (canTakeNextJob) {
-				//could reset entire loop here but chose to keep iterating through each entry equally
+			    if (coflowCompletionTime[candidateJob.id] < newIngressTime) {
+                    coflowCompletionTime[candidateJob.id] = newIngressTime;
+                }
 				ingressCount[candidateIngress]--;
 				egressIngressCount[i][candidateIngress]--;
-				coflowCompletionTime[candidateJob.id] = newIngressTime;
 				ingressTimes[candidateIngress] = newIngressTime;
 				egressTimes[i] = newEgressTime;
 				schedulesIndex[i]++;
