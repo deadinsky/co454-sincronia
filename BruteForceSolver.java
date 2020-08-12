@@ -140,33 +140,52 @@ public class BruteForceSolver {
         return wCCT;
     }
 	public static long getSchedulePermutations(ArrayList<ArrayList<Job>> schedule,
-											  int schedulesSize, int index, long bestWCCT, int[] weights,
-											  ArrayList<ArrayList<ArrayList<Job>>> jobPermutations,
-											  long coflowCompletionTime[], int[] ingressTimes,
+											  int schedulesSize, long bestWCCT, int[] weights,
+											  ArrayList<Collection<List<Job>>> jobPermutations,
+											  long[] coflowCompletionTime, int[] ingressTimes,
 											  int[] schedulesIndex, int[] ingressCount, int[][] egressIngressCount) {
+		//changed to be iterative and not recursive
 		long wCCT = bestWCCT;
-    	if (index < schedulesSize) {
-			for (ArrayList<Job> perm : jobPermutations.get(index)) {
-				schedule.set(index, perm);
-				long newWCCT = getSchedulePermutations(schedule,
-						schedulesSize, index + 1, wCCT, weights, jobPermutations,
-						coflowCompletionTime, ingressTimes, schedulesIndex, ingressCount, egressIngressCount);
-				if (wCCT == -1 || (newWCCT > -1 && newWCCT < wCCT)) {
-					wCCT = newWCCT;
-				}
+		long permSize[] = new long[schedulesSize];
+		Iterator<List<Job>> iteratorArray[] = new Iterator[schedulesSize];
+		int egressTimes[] = new int[schedulesSize];
+		for (int i = 0; i < schedulesSize; i++) {
+			permSize[i] = jobPermutations.get(i).size();
+			iteratorArray[i] = jobPermutations.get(i).iterator();
+			if (iteratorArray[i].hasNext()) {
+				schedule.set(i, new ArrayList<Job>(iteratorArray[i].next()));
+				egressTimes[i] = schedule.get(i).get(0).releaseTime;
 			}
-		} else {
-    		//need to copy all of the int arrays so modification does not effect reusing them for other schedules
-			int egressTimes[] = new int[schedulesSize];
-			for (int i = 0; i < schedulesSize; i++) {
-				if (schedule.get(i).size() > 0) {
-					egressTimes[i] = schedule.get(i).get(0).releaseTime;
-				}
-			}
-    		wCCT = calculateCCTFromJobOrdering(schedule, schedulesSize, wCCT, weights,
-					coflowCompletionTime.clone(), ingressTimes.clone(), egressTimes,
+		}
+		boolean isFinished = false;
+		int firstIndexToCheck = schedulesSize - 1;
+		while (!isFinished) {
+			long newWCCT = calculateCCTFromJobOrdering(schedule, schedulesSize, wCCT, weights,
+					coflowCompletionTime.clone(), ingressTimes.clone(), egressTimes.clone(),
 					schedulesIndex.clone(), ingressCount.clone(),
 					Arrays.stream(egressIngressCount).map(int[]::clone).toArray(int[][]::new));
+			if (wCCT == -1 || (newWCCT > -1 && newWCCT < wCCT)) {
+				wCCT = newWCCT;
+			}
+			boolean nextIteration = false;
+			int indexToCheck = firstIndexToCheck;
+			while (!nextIteration) {
+				if (permSize[indexToCheck] > 0) {
+					if (iteratorArray[indexToCheck].hasNext()) {
+						nextIteration = true;
+					} else {
+						iteratorArray[indexToCheck] = jobPermutations.get(indexToCheck).iterator();
+					}
+					schedule.set(indexToCheck, new ArrayList<Job>(iteratorArray[indexToCheck].next()));
+				}
+				if (!nextIteration) {
+					indexToCheck--;
+					if (indexToCheck == -1) {
+						nextIteration = true;
+						isFinished = true;
+					}
+				}
+			}
 		}
 		return wCCT;
 	}
@@ -225,19 +244,15 @@ public class BruteForceSolver {
 			coflowCompletionTime[i] = 0;
 		}
         //permutations for every single schedule
-		ArrayList<ArrayList<ArrayList<Job>>> jobPermutations = new ArrayList<>(schedulesSize);
+		ArrayList<Collection<List<Job>>> jobPermutations = new ArrayList<>(schedulesSize);
 		ArrayList<ArrayList<Job>> schedule = new ArrayList<>(schedulesSize);
 		//convert them all to arraylists beforehand to save time
 		for (int i = 0; i < schedulesSize; i++) {
 			Collection<List<Job>> permutations = Collections2.permutations(schedules.get(i));
-			ArrayList<ArrayList<Job>> convertedPermutations = new ArrayList<>(permutations.size());
-			for (List<Job> perm : permutations) {
-				convertedPermutations.add(new ArrayList<Job>(perm));
-			}
-			jobPermutations.add(convertedPermutations);
+			jobPermutations.add(permutations);
 			schedule.add(null);
 		}
-		long wCCT = getSchedulePermutations(schedule, schedulesSize, 0, -1,
+		long wCCT = getSchedulePermutations(schedule, schedulesSize, -1,
 				weights.stream().mapToInt(i->i).toArray(), jobPermutations,
 				coflowCompletionTime, ingressTimes, schedulesIndex, ingressCount, egressIngressCount);
 		System.out.println("optimal wCCT: " + wCCT);
