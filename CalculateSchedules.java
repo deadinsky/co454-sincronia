@@ -232,23 +232,24 @@ public class CalculateSchedules {
         while (!nextIngress.isEmpty()) {
             int ingressIndex = nextIngress.get(0);
             ArrayList<Job> ingressSchedule = localSchedules.get(ingressIndex);
-            EpsilonFraction nextReleaseCheck = ingressTimes[ingressIndex];
-            EpsilonFraction nextEgressCheck = ingressTimes[ingressIndex];
+            EpsilonFraction nextReleaseCheck = EpsilonFraction.max;
+            EpsilonFraction nextEgressCheck = EpsilonFraction.max;
             boolean jobFound = false;
             //find a job from the next available ingress that has an open egress with a released job
             for (int i = 0; !jobFound && i < ingressSchedule.size(); i++) {
                 Job ingressJob = ingressSchedule.get(i);
                 int flowIndex = idDict.get(ingressJob.id);
+                int egressIndex = egressDict.get(ingressJob.egress);
                 //record the next release time, just in case no job is released
                 if (releaseTimes[flowIndex].isGreater(ingressTimes[ingressIndex])) {
-                    if (releaseTimes[idDict.get(ingressJob.id)].isGreater(nextReleaseCheck)) {
-                        nextReleaseCheck = releaseTimes[idDict.get(ingressJob.id)];
+                    if (nextReleaseCheck.isGreater(releaseTimes[flowIndex])) {
+                        nextReleaseCheck = releaseTimes[flowIndex];
                     }
                 }
                 //record the next available egress, just in case none are currently available
-                else if (egressTimes[egressDict.get(ingressJob.egress)].isGreater(ingressTimes[ingressIndex])) {
-                    if (egressTimes[egressDict.get(ingressJob.egress)].isGreater(nextEgressCheck)) {
-                        nextEgressCheck = egressTimes[egressDict.get(ingressJob.egress)];
+                else if (egressTimes[egressIndex].isGreater(ingressTimes[ingressIndex])) {
+                    if (nextEgressCheck.isGreater(egressTimes[egressIndex])) {
+                        nextEgressCheck = egressTimes[egressIndex];
                     }
                 }
                 else {
@@ -258,8 +259,8 @@ public class CalculateSchedules {
                     //ingress and egress will now be free at the same time
                     ingressTimes[ingressIndex] = EpsilonFraction.addFractions(ingressTimes[ingressIndex],
                             new EpsilonFraction(ingressJob.timeUnits, ingressJob.epsilon));
-                    egressTimes[egressDict.get(ingressJob.egress)] = ingressTimes[ingressIndex];
-                    beNodeSchedules.get(egressDict.get(ingressJob.egress)).add(ingressJob);
+                    egressTimes[egressIndex] = ingressTimes[ingressIndex];
+                    beNodeSchedules.get(egressIndex).add(ingressJob);
                     if (ingressTimes[ingressIndex].isGreater(finishTimes[flowIndex])) {
                         finishTimes[flowIndex] = ingressTimes[ingressIndex];
                     }
@@ -270,9 +271,9 @@ public class CalculateSchedules {
             //if no applicable egress is available, let the job wait until there is one
             if (!jobFound) {
                 if (nextReleaseCheck.isGreater(nextEgressCheck)) {
-                    ingressTimes[ingressIndex] = nextReleaseCheck;
-                } else {
                     ingressTimes[ingressIndex] = nextEgressCheck;
+                } else {
+                    ingressTimes[ingressIndex] = nextReleaseCheck;
                 }
             }
             //if no jobs are left for the ingress, remove the index, otherwise add it back in line

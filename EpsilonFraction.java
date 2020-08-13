@@ -6,6 +6,7 @@ public class EpsilonFraction {
 
     public final static EpsilonFraction one = new EpsilonFraction(1);
     public final static EpsilonFraction zero = new EpsilonFraction(0);
+    public final static EpsilonFraction max = new EpsilonFraction(Long.MAX_VALUE);
 
     EpsilonFraction(long lNumInt) {
         numInt = lNumInt;
