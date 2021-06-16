@@ -1,5 +1,9 @@
 # co454-sincronia
 
+Implements the sincronia coflow algorithm found at [https://github.com/sincronia-coflow/tech-report/blob/master/sincronia-techreport.pdf](https://github.com/sincronia-coflow/tech-report/blob/master/sincronia-techreport.pdf)
+
+Credit to Christopher Zhu for the analysis sections in the final reports.
+
 This code was created using Java 1.11 on a Linux setup but should work with Java 1.8.
 
 There are four ways to build these project components:
